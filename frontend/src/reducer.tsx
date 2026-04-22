@@ -1,14 +1,16 @@
+import { ObjectId } from "mongodb";
 export type Post = {
-  id: number;
+  id: ObjectId; 
+
   title: string | null;
   body: string | null;
   time: string;
 };
 
 export type FeedState = {
-  nextId: number;
   posts: Post[];
 };
+
 export enum Actions {
   ADD,
   DELETE,
@@ -16,25 +18,24 @@ export enum Actions {
 }
 
 export type Action =
-  | { type: Actions.ADD; payload: post }
-  | { type: Actions.DELETE; payload: number }
-  | { type: Actions.SET_INITIAL; payload: Feed };
+  | { type: Actions.ADD; payload: Post }
+  | { type: Actions.DELETE; payload: string }
+  | { type: Actions.SET_INITIAL; payload: Post[] };
 
-export const reducer = (state: Feed, action: Action): Feed => {
+export const reducer = (state: FeedState, action: Action): FeedState => {
   switch (action.type) {
     case Actions.SET_INITIAL:
-      return action.payload;
+      return { posts: action.payload };
 
     case Actions.ADD:
       return {
-        nextId: state.nextId + 1,
         posts: [...state.posts, action.payload],
       };
 
     case Actions.DELETE:
       return {
         ...state,
-        posts: state.posts.filter((p) => p.id !== action.payload),
+        posts: state.posts.filter((p) => p._id !== action.payload),
       };
 
     default:

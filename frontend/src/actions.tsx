@@ -5,11 +5,15 @@ export const handleAddPost = async (
   dispatch: React.Dispatch<Action>,
   newPost: Post,
 ) => {
-  await addPostApi(newPost);
+  const res = await addPostApi(newPost);
+  const result = await res.json();
 
   dispatch({
     type: Actions.ADD,
-    payload: newPost,
+    payload: {
+      ...newPost,
+      _id: result.id,
+    },
   });
 };
 
@@ -17,10 +21,10 @@ export const handleDeletePost = async (
   dispatch: React.Dispatch<Action>,
   post: Post,
 ) => {
-  await deletePostApi(post);
+  await deletePostApi(post._id);
 
   dispatch({
     type: Actions.DELETE,
-    payload: post.id,
+    payload: post._id,
   });
 };

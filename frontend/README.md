@@ -107,3 +107,32 @@ Delete should only happen with a confirmation.
 - We can beautify it later
 - Assume a default user name for now.
 - Consider using the `date-fns` library for the dates and time stamps
+
+# Backend
+
+Add a backend and have all the interactions update the backend before updating
+frontend state.
+
+Upon first render, a fetch has to happen to get the initial state of the system
+and render it.
+
+# Things to consider
+
+- Cors vs Proxy
+- Where will you put the effect?
+- If you are using reducers, will the update on the frontend happen before or
+  after the call?
+
+# Persistence
+
+We will now add a persistence layer in the backend.
+
+For our database, we will choose MongoDB. You will have to research and find out
+how to use MongoDB, how to use MongoDB in Javascript, then use MongoDB in
+Javascript.
+
+The best suggestion is to first build a persistence layer independent of
+MongoDB. Inject that as a dependency, then implement the MongoDB version of the
+persitence layer interface.
+
+Best of luck.

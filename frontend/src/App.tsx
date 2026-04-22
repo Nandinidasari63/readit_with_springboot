@@ -40,25 +40,32 @@ const PostItem = (
 
 export const FeedList = (
   { data, dispatch }: {
-    data: FeedState;
+    data: Post[];
     dispatch: React.Dispatch<Action>;
   },
 ) => {
-  return data.posts.map((post) => (
+  console.log("feed list", data, "check this");
+  return data.map((post) => (
     <PostItem
-      key={post.id}
+      key={post._id}
       data={post}
-      ondelete={() => handleDeletePost(dispatch, post)}
+      ondelete={async () => {
+        const confirmed = globalThis.confirm(
+          "Are you sure you want to delete this post?",
+        );
+
+        if (!confirmed) return;
+
+        await handleDeletePost(dispatch, post);
+      }}
     />
   ));
 };
 
 const PostForm = ({
   dispatch,
-  data,
 }: {
   dispatch: React.Dispatch<Action>;
-  data: FeedState;
 }) => {
   const submitPost = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,7 +75,6 @@ const PostForm = ({
     const body = formData.get("body") as string;
 
     const newPost = {
-      id: data.nextId + 1,
       title,
       body,
       time: format(new Date(), "MMMM d, yyyy h:mm a"),
@@ -93,14 +99,13 @@ const PostForm = ({
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, {
-    nextId: 0,
     posts: [],
   });
 
   useEffect(() => {
     const loadData = async () => {
       const result = await fetchPosts();
-
+      console.log("initial data", result, "initial posts", result.data);
       dispatch({
         type: Actions.SET_INITIAL,
         payload: result.data,
@@ -112,8 +117,8 @@ const App = () => {
 
   return (
     <>
-      <PostForm dispatch={dispatch} data={state} />
-      <FeedList dispatch={dispatch} data={state} />
+      <PostForm dispatch={dispatch} />
+      <FeedList dispatch={dispatch} data={state.posts} />
     </>
   );
 };
