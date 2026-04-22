@@ -9,4 +9,7 @@
 
 #submit-btn {
   padding: 0.3em;
+  background-color: rgb(108, 108, 227);
+  color:white;
+  width:70px;
 }
