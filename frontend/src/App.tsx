@@ -3,11 +3,13 @@ import { format } from "date-fns";
 import {
   type Action,
   Actions,
-  type Feed,
-  type post,
+  type FeedState,
+  type Post,
   reducer,
 } from "./reducer.tsx";
 import { useEffect, useReducer } from "react";
+import { handleAddPost, handleDeletePost } from "./actions.tsx";
+import { fetchPosts } from "./api.tsx";
 
 const Title = () => (
   <div className="title-container">
@@ -24,8 +26,8 @@ const Body = () => (
   </div>
 );
 
-const SinglePost = (
-  { data, ondelete }: { data: post; ondelete: () => void },
+const PostItem = (
+  { data, ondelete }: { data: Post; ondelete: () => void },
 ) => (
   <>
     <h3>Alex Johnson</h3>
@@ -38,45 +40,43 @@ const SinglePost = (
 
 export const FeedList = (
   { data, dispatch }: {
-    data: Feed;
+    data: FeedState;
     dispatch: React.Dispatch<Action>;
   },
 ) => {
   return data.posts.map((post) => (
-    <SinglePost
+    <PostItem
       key={post.id}
       data={post}
-      ondelete={async () => {
-        await fetch("http://localhost:8080/delete", {
-          method: "POST",
-          body: JSON.stringify(post),
-        });
-
-        dispatch({ type: Actions.DELETE, payload: post.id });
-      }}
+      ondelete={() => handleDeletePost(dispatch, post)}
     />
   ));
 };
 
-const Post = ({ dispatch, data }: {
+const PostForm = ({
+  dispatch,
+  data,
+}: {
   dispatch: React.Dispatch<Action>;
-  data: Feed;
+  data: FeedState;
 }) => {
-  const submitPost = (e: React.SubmitEvent<HTMLFormElement>) => {
+  const submitPost = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
+
+    const formData = new FormData(e.currentTarget);
     const title = formData.get("title") as string;
     const body = formData.get("body") as string;
-    const time = format(new Date(Date.now()), "MMMM d, yyyy h:m a");
-    const newPost = { id: data.nextId + 1, title, body, time };
 
-    (async () =>
-      await fetch("http://localhost:8080/add", {
-        method: "POST",
-        body: JSON.stringify(newPost),
-      }))();
+    const newPost = {
+      id: data.nextId + 1,
+      title,
+      body,
+      time: format(new Date(), "MMMM d, yyyy h:mm a"),
+    };
 
-    dispatch({ type: Actions.ADD, payload: newPost });
+    handleAddPost(dispatch, newPost);
+
+    e.currentTarget.reset();
   };
 
   return (
@@ -85,9 +85,8 @@ const Post = ({ dispatch, data }: {
       <form onSubmit={submitPost}>
         <Title />
         <Body />
-        <button type="submit" id="submit-btn">Post</button>
+        <button type="submit">Post</button>
       </form>
-      <FeedList data={data} dispatch={dispatch} />
     </>
   );
 };
@@ -99,9 +98,8 @@ const App = () => {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      const response = await fetch("http://localhost:8080/getdata");
-      const result = await response.json();
+    const loadData = async () => {
+      const result = await fetchPosts();
 
       dispatch({
         type: Actions.SET_INITIAL,
@@ -109,9 +107,14 @@ const App = () => {
       });
     };
 
-    fetchData();
+    loadData();
   }, []);
 
-  return <Post dispatch={dispatch} data={state} />;
+  return (
+    <>
+      <PostForm dispatch={dispatch} data={state} />
+      <FeedList dispatch={dispatch} data={state} />
+    </>
+  );
 };
 export default App;

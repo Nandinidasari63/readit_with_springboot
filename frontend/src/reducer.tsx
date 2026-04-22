@@ -1,15 +1,14 @@
-export type post = {
+export type Post = {
   id: number;
   title: string | null;
   body: string | null;
   time: string;
 };
 
-export type Feed = {
+export type FeedState = {
   nextId: number;
-  posts: post[];
+  posts: Post[];
 };
-
 export enum Actions {
   ADD,
   DELETE,
