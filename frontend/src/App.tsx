@@ -1,23 +1,14 @@
-import { useEffect, useState } from "react";
 import "./App.css";
 import { format } from "date-fns";
+import {
+  type Action,
+  Actions,
+  type Feed,
+  type post,
+  reducer,
+} from "./reducer.tsx";
+import { useEffect, useReducer } from "react";
 
-type post = {
-  id: number;
-  title: string | null;
-  body: string | null;
-  time: string;
-};
-
-type Feed = {
-  nextId: number;
-  posts: post[];
-};
-
-type postProps = {
-  setPost: React.Dispatch<React.SetStateAction<Feed>>;
-  data: Feed;
-};
 const Title = () => (
   <div className="title-container">
     <p>Title</p>
@@ -45,51 +36,47 @@ const SinglePost = (
   </>
 );
 
-const Feed = (
-  { data, setPost }: {
+export const FeedList = (
+  { data, dispatch }: {
     data: Feed;
-    setPost: React.Dispatch<React.SetStateAction<Feed>>;
+    dispatch: React.Dispatch<Action>;
   },
 ) => {
   return data.posts.map((post) => (
     <SinglePost
       key={post.id}
       data={post}
-      ondelete={() => {
-        const deletePost = async () => {
-          const response = await fetch("http://localhost:8080/delete", {
-            method: "POST",
-            body: JSON.stringify(post),
-          });
-          const result = await response.json();
-          console.log("in delete", response, result.data);
-          setPost(result.data);
-        };
-        deletePost();
+      ondelete={async () => {
+        await fetch("http://localhost:8080/delete", {
+          method: "POST",
+          body: JSON.stringify(post),
+        });
+
+        dispatch({ type: Actions.DELETE, payload: post.id });
       }}
     />
   ));
 };
 
-const Post = ({ setPost, data }: postProps) => {
+const Post = ({ dispatch, data }: {
+  dispatch: React.Dispatch<Action>;
+  data: Feed;
+}) => {
   const submitPost = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const title = formData.get("title") as string;
     const body = formData.get("body") as string;
-    const time = format(new Date(Date.now()), "yyyy-MM-dd");
+    const time = format(new Date(Date.now()), "MMMM d, yyyy h:m a");
     const newPost = { id: data.nextId + 1, title, body, time };
 
-    const addData = async () => {
-      const response = await fetch("http://localhost:8080/add", {
+    (async () =>
+      await fetch("http://localhost:8080/add", {
         method: "POST",
         body: JSON.stringify(newPost),
-      });
-      const result = await response.json();
-      setPost(result.data);
-    };
+      }))();
 
-    addData();
+    dispatch({ type: Actions.ADD, payload: newPost });
   };
 
   return (
@@ -100,14 +87,14 @@ const Post = ({ setPost, data }: postProps) => {
         <Body />
         <button type="submit" id="submit-btn">Post</button>
       </form>
-      <Feed data={data} setPost={setPost} />
+      <FeedList data={data} dispatch={dispatch} />
     </>
   );
 };
 
 const App = () => {
-  const [postList, setPost] = useState<Feed>({
-    nextId: 1,
+  const [state, dispatch] = useReducer(reducer, {
+    nextId: 0,
     posts: [],
   });
 
@@ -115,12 +102,16 @@ const App = () => {
     const fetchData = async () => {
       const response = await fetch("http://localhost:8080/getdata");
       const result = await response.json();
-      console.log(response, result.data);
-      setPost(result.data);
+
+      dispatch({
+        type: Actions.SET_INITIAL,
+        payload: result.data,
+      });
     };
 
     fetchData();
   }, []);
-  return <Post setPost={setPost} data={postList} />;
+
+  return <Post dispatch={dispatch} data={state} />;
 };
 export default App;
