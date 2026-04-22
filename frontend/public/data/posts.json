@@ -1,7 +1,0 @@
-{
-  "nextId": 3,
-  "posts": [
-    { "id": 1, "title": "first title", "body": "this is first body" },
-    { "id": 2, "title": "second title", "body": "this is second body" }
-  ]
-}

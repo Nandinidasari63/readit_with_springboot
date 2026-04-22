@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import { format } from "date-fns";
-import { produce } from "immer";
 
 type post = {
   id: number;
@@ -22,8 +21,7 @@ type postProps = {
 const Title = () => (
   <div className="title-container">
     <p>Title</p>
-    <input type="text" name="title" placeholder="Enter a title" id="title">
-    </input>
+    <input type="text" name="title" placeholder="Enter a title" id="title" />
   </div>
 );
 
@@ -58,11 +56,16 @@ const Feed = (
       key={post.id}
       data={post}
       ondelete={() => {
-        setPost((prev) =>
-          produce(prev, (draft: Feed) => {
-            draft.posts = draft.posts.filter((p) => p.id !== post.id);
-          })
-        );
+        const deletePost = async () => {
+          const response = await fetch("http://localhost:8080/delete", {
+            method: "POST",
+            body: JSON.stringify(post),
+          });
+          const result = await response.json();
+          console.log("in delete", response, result.data);
+          setPost(result.data);
+        };
+        deletePost();
       }}
     />
   ));
@@ -83,7 +86,6 @@ const Post = ({ setPost, data }: postProps) => {
         body: JSON.stringify(newPost),
       });
       const result = await response.json();
-      console.log("in add", response, result.data);
       setPost(result.data);
     };
 
