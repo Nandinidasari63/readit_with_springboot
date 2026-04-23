@@ -14,7 +14,7 @@ import {
 } from "./reducer.tsx";
 import { useEffect, useReducer, useState } from "react";
 import { handleAddPost, handleDeletePost } from "./actions.tsx";
-import { fetchPosts } from "./api.tsx";
+import { addUserApi, fetchPosts } from "./api.tsx";
 import React from "react";
 
 const Title = () => (
@@ -37,35 +37,37 @@ const Body = () => (
 );
 
 const PostItem = (
-  { data, ondelete }: { data: Post; ondelete: () => void },
-) => (
-  <>
-    <h3>Alex Johnson</h3>
-    <p>{data.time}</p>
-    <h2>{data.title}</h2>
-    <p>{data.body}</p>
-    <button type="button" onClick={ondelete}>Delete</button>
-  </>
-);
+  { data, ondelete, name }: { data: Post; ondelete: () => void; name: string },
+) => {
+  return (
+    <>
+      <h3>{name}</h3>
+      <p>{data.time}</p>
+      <h2>{data.title}</h2>
+      <p>{data.body}</p>
+      <button type="button" onClick={ondelete}>Delete</button>
+    </>
+  );
+};
 
 export const FeedList = (
   { data, dispatch }: {
-    data: Post[];
+    data: FeedState;
     dispatch: React.Dispatch<Action>;
   },
 ) => {
-  return data.map((post) => (
+  return data.posts.map((post) => (
     <PostItem
-      key={post._id}
+      key={post.id}
       data={post}
+      name={data.name}
       ondelete={async () => {
         const confirmed = globalThis.confirm(
           "Are you sure you want to delete this post?",
         );
 
         if (!confirmed) return;
-
-        await handleDeletePost(dispatch, post);
+        await handleDeletePost(dispatch, post, data._id);
       }}
     />
   ));
@@ -76,7 +78,8 @@ const PostForm = ({
 }: {
   dispatch: React.Dispatch<Action>;
 }) => {
-  const submitPost = (e: React.FormEvent<HTMLFormElement>) => {
+  const [id, setId] = useState(0);
+  const submitPost = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const formData = new FormData(e.currentTarget);
@@ -84,14 +87,14 @@ const PostForm = ({
     const body = formData.get("body") as string;
 
     const newPost = {
+      id,
       title,
       body,
       time: format(new Date(), "MMMM d, yyyy h:mm a"),
     };
 
     handleAddPost(dispatch, newPost);
-
-    e.currentTarget.reset();
+    setId((id) => id + 1);
   };
 
   return (
@@ -108,6 +111,8 @@ const PostForm = ({
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, {
+    name: null,
+    password: null,
     posts: [],
   });
 
@@ -122,33 +127,39 @@ const App = () => {
 
     loadData();
   }, []);
-
   return (
     <>
       <CssBaseline />
       <Container fixed>
         <Box sx={{ bgcolor: "rgba(212, 209, 209, 0.1)", padding: "20px" }}>
           <PostForm dispatch={dispatch} />
-          <FeedList dispatch={dispatch} data={state.posts} />
+          <FeedList dispatch={dispatch} data={state} />
         </Box>
       </Container>
     </>
   );
 };
 
-const Login = () => {
-  // const [islogged, setLogStatus] = useState(false);
+const Login = ({ setLogStatus }) => {
+  const onsubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get("username") as string;
+    const password = formData.get("password") as string;
+    await addUserApi(name, password);
+    setLogStatus(true);
+  };
+
   return (
     <>
-      <form className="login">
+      <form
+        className="login"
+        onSubmit={onsubmit}
+      >
         <h2>Login</h2>
         <input type="text" placeholder="enter name" name="username" />
         <input type="password" placeholder="enter password" name="password" />
-        <button
-          type="button"
-          onClick={() => {
-          }}
-        >
+        <button type="submit">
           Login
         </button>
       </form>
@@ -156,4 +167,10 @@ const Login = () => {
   );
 };
 
-export default Login;
+const Auth = () => {
+  const [islogged, setLogStatus] = useState(false);
+  const component = islogged ? <App /> : <Login setLogStatus={setLogStatus} />;
+  return component;
+};
+
+export default Auth;

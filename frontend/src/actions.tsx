@@ -3,16 +3,19 @@ import { addPostApi, deletePostApi } from "./api.tsx";
 
 export const handleAddPost = async (
   dispatch: React.Dispatch<Action>,
-  newPost: Post,
+  newPost: {
+    id: number;
+    title: string | null;
+    body: string | null;
+    time: string;
+  },
 ) => {
-  const res = await addPostApi(newPost);
-  const result = await res.json();
+  await addPostApi(newPost);
 
   dispatch({
     type: Actions.ADD,
     payload: {
       ...newPost,
-      _id: result.id,
     },
   });
 };
@@ -20,11 +23,12 @@ export const handleAddPost = async (
 export const handleDeletePost = async (
   dispatch: React.Dispatch<Action>,
   post: Post,
+  userId: string,
 ) => {
-  await deletePostApi(post._id);
+  await deletePostApi(post.id, userId);
 
   dispatch({
     type: Actions.DELETE,
-    payload: post._id,
+    payload: post.id,
   });
 };
