@@ -1,7 +1,12 @@
-// import { type Post } from "./reducer.tsx";
-
 export const fetchPosts = async () => {
   const res = await fetch("http://localhost:8080/posts", {
+    credentials: "include",
+  });
+  return res.json();
+};
+
+export const fetchUsers = async () => {
+  const res = await fetch("http://localhost:8080/users", {
     credentials: "include",
   });
   return res.json();

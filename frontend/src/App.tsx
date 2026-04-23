@@ -14,7 +14,7 @@ import {
 } from "./reducer.tsx";
 import { useEffect, useReducer, useState } from "react";
 import { handleAddPost, handleDeletePost } from "./actions.tsx";
-import { addUserApi, fetchPosts } from "./api.tsx";
+import { addUserApi, fetchPosts, fetchUsers } from "./api.tsx";
 import React from "react";
 
 const Title = () => (
@@ -22,7 +22,7 @@ const Title = () => (
     <p>Title</p>
     {
       <Box sx={{ width: 500, maxWidth: "100%" }}>
-        <TextField fullWidth label="fullWidth" id="fullWidth" />
+        <TextField fullWidth label="fullWidth" id="fullWidth" name="title" />
       </Box>
     }
   </div>
@@ -39,6 +39,7 @@ const Body = () => (
 const PostItem = (
   { data, ondelete, name }: { data: Post; ondelete: () => void; name: string },
 ) => {
+  console.log(name, data);
   return (
     <>
       <h3>{name}</h3>
@@ -109,6 +110,46 @@ const PostForm = ({
   );
 };
 
+const SearchBar = ({ users }: { users: FeedState }) => (
+  <>
+    <h3>Search users</h3>
+    {
+      <Box sx={{ width: 500, maxWidth: "100%" }}>
+        <TextField fullWidth label="fullWidth" id="fullWidth" name="title" />
+      </Box>
+    }
+    <button type="button">Search</button>
+    <p>3 users found</p>
+  </>
+);
+
+const Users = ({ users }: { users: FeedState }) => (
+  <>
+    <div className="user">
+      <p>Name</p>
+      <button type="button">Subscribe</button>
+    </div>
+  </>
+);
+
+const UsersList = () => {
+  const [users, setUsers] = useState<FeedState>(null);
+  useEffect(() => {
+    const loadData = async () => {
+      const result = await fetchUsers();
+      setUsers(result);
+    };
+    loadData();
+  }, []);
+
+  return (
+    <>
+      <SearchBar users={users} />
+      <Users users={users} />
+    </>
+  );
+};
+
 const App = () => {
   const [state, dispatch] = useReducer(reducer, {
     name: null,
@@ -132,6 +173,7 @@ const App = () => {
       <CssBaseline />
       <Container fixed>
         <Box sx={{ bgcolor: "rgba(212, 209, 209, 0.1)", padding: "20px" }}>
+          <UsersList />
           <PostForm dispatch={dispatch} />
           <FeedList dispatch={dispatch} data={state} />
         </Box>

@@ -36,6 +36,11 @@ export const createApp = () => {
     return c.json({ data: user });
   });
 
+  app.get("/users", async (c) => {
+    const users = await manager.getUsers();
+    return c.json({ data: users });
+  });
+
   app.post("/add", async (c) => {
     const body = await c.req.json();
     const name = getCookie(c, "username");
@@ -51,10 +56,14 @@ export const createApp = () => {
 
   app.post("/adduser", async (c) => {
     const body: { name: string; password: string } = await c.req.json();
-    const res = await manager.addUser(body);
-    console.log(res.insertedId);
-    setCookie(c, "userId", res.insertedId.toString());
-    return c.json({ message: "created user" });
+    try {
+      const res = await manager.addUser(body);
+      console.log(res.insertedId);
+      setCookie(c, "userId", res.insertedId.toString());
+      return c.json({ message: "created user" }, 200);
+    } catch {
+      return c.json({ message: "already exist just logged in" }, 400);
+    }
   });
 
   return app;

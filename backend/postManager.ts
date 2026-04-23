@@ -8,6 +8,11 @@ export class PostManager {
       .toArray())[0];
   }
 
+  async getUsers() {
+    return (await postsCollection.find({})
+      .toArray());
+  }
+
   async addPost(data: Post, name: string | undefined) {
     return await postsCollection.updateOne({ name: name }, {
       $push: { posts: data },
@@ -15,6 +20,13 @@ export class PostManager {
   }
 
   async addUser({ name, password }: { name: string; password: string }) {
+    const isUserExist: boolean =
+      (await postsCollection.find({ name, password }).toArray())
+        .length !== 0;
+
+    if (isUserExist) {
+      throw Error("user already Exist");
+    }
     return await postsCollection.insertOne({
       name,
       password,
