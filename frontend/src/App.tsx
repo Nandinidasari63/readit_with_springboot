@@ -1,5 +1,10 @@
 import "./App.css";
 import { format } from "date-fns";
+import CssBaseline from "@mui/material/CssBaseline";
+import Box from "@mui/material/Box";
+import Container from "@mui/material/Container";
+import { TextField } from "@mui/material";
+
 import {
   type Action,
   Actions,
@@ -10,11 +15,16 @@ import {
 import { useEffect, useReducer } from "react";
 import { handleAddPost, handleDeletePost } from "./actions.tsx";
 import { fetchPosts } from "./api.tsx";
+import React from "react";
 
 const Title = () => (
   <div className="title-container">
     <p>Title</p>
-    <input type="text" name="title" placeholder="Enter a title" id="title" />
+    {
+      <Box sx={{ width: 500, maxWidth: "100%" }}>
+        <TextField fullWidth label="fullWidth" id="fullWidth" />
+      </Box>
+    }
   </div>
 );
 
@@ -44,7 +54,6 @@ export const FeedList = (
     dispatch: React.Dispatch<Action>;
   },
 ) => {
-  console.log("feed list", data, "check this");
   return data.map((post) => (
     <PostItem
       key={post._id}
@@ -105,7 +114,6 @@ const App = () => {
   useEffect(() => {
     const loadData = async () => {
       const result = await fetchPosts();
-      console.log("initial data", result, "initial posts", result.data);
       dispatch({
         type: Actions.SET_INITIAL,
         payload: result.data,
@@ -117,8 +125,13 @@ const App = () => {
 
   return (
     <>
-      <PostForm dispatch={dispatch} />
-      <FeedList dispatch={dispatch} data={state.posts} />
+      <CssBaseline />
+      <Container fixed>
+        <Box sx={{ bgcolor: "rgba(212, 209, 209, 0.1)", padding: "20px" }}>
+          <PostForm dispatch={dispatch} />
+          <FeedList dispatch={dispatch} data={state.posts} />
+        </Box>
+      </Container>
     </>
   );
 };

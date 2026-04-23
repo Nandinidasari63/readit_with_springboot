@@ -1,6 +1,5 @@
-import { ObjectId } from "mongodb";
 export type Post = {
-  id: ObjectId; 
+  id: string;
 
   title: string | null;
   body: string | null;
