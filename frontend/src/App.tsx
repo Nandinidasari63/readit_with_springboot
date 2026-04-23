@@ -110,38 +110,34 @@ const PostForm = ({
   );
 };
 
-const SearchBar = ({ users }: { users: FeedState }) => (
-  <>
-    <h3>Search users</h3>
-    {
-      <Box sx={{ width: 500, maxWidth: "100%" }}>
-        <TextField fullWidth label="fullWidth" id="fullWidth" name="title" />
-      </Box>
-    }
-    <button type="button">Search</button>
-    <p>3 users found</p>
-  </>
-);
+const SearchBar = ({ users }) => {
+  return (
+    <>
+      <h3>Search users</h3>
+      {
+        <Box sx={{ width: 500, maxWidth: "100%" }}>
+          <TextField fullWidth label="fullWidth" id="fullWidth" name="title" />
+        </Box>
+      }
+      <button type="button">Search</button>
+      <p>{users.length} users found</p>
+    </>
+  );
+};
 
-const Users = ({ users }: { users: FeedState }) => (
-  <>
-    <div className="user">
-      <p>Name</p>
+const Users = ({ users }: { users: { name: string }[] }) => {
+  return users.map((user: { name: string }) => (
+    <div
+      className="user"
+      style={{ border: "1px solid black", padding: "5px", margin: "3px" }}
+    >
+      <p>{user.name}</p>
       <button type="button">Subscribe</button>
     </div>
-  </>
-);
+  ));
+};
 
-const UsersList = () => {
-  const [users, setUsers] = useState<FeedState>(null);
-  useEffect(() => {
-    const loadData = async () => {
-      const result = await fetchUsers();
-      setUsers(result);
-    };
-    loadData();
-  }, []);
-
+const UsersList = ({ users }) => {
   return (
     <>
       <SearchBar users={users} />
@@ -151,11 +147,20 @@ const UsersList = () => {
 };
 
 const App = () => {
+  const [users, setUsers] = useState<FeedState[]>([]);
   const [state, dispatch] = useReducer(reducer, {
     name: null,
     password: null,
     posts: [],
   });
+
+  useEffect(() => {
+    const loadData = async () => {
+      const result = await fetchUsers();
+      setUsers(result.data);
+    };
+    loadData();
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -173,7 +178,7 @@ const App = () => {
       <CssBaseline />
       <Container fixed>
         <Box sx={{ bgcolor: "rgba(212, 209, 209, 0.1)", padding: "20px" }}>
-          <UsersList />
+          <UsersList users={users} />
           <PostForm dispatch={dispatch} />
           <FeedList dispatch={dispatch} data={state} />
         </Box>
