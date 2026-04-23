@@ -12,7 +12,7 @@ import {
   type Post,
   reducer,
 } from "./reducer.tsx";
-import { useEffect, useReducer } from "react";
+import { useEffect, useReducer, useState } from "react";
 import { handleAddPost, handleDeletePost } from "./actions.tsx";
 import { fetchPosts } from "./api.tsx";
 import React from "react";
@@ -135,4 +135,25 @@ const App = () => {
     </>
   );
 };
-export default App;
+
+const Login = () => {
+  // const [islogged, setLogStatus] = useState(false);
+  return (
+    <>
+      <form className="login">
+        <h2>Login</h2>
+        <input type="text" placeholder="enter name" name="username" />
+        <input type="password" placeholder="enter password" name="password" />
+        <button
+          type="button"
+          onClick={() => {
+          }}
+        >
+          Login
+        </button>
+      </form>
+    </>
+  );
+};
+
+export default Login;
