@@ -8,6 +8,9 @@ export const handleAddPost = async (
     title: string | null;
     body: string | null;
     time: string;
+    likes: string[];
+    userId: string;
+    name: string;
   },
 ) => {
   await addPostApi(newPost);
@@ -29,6 +32,18 @@ export const handleDeletePost = async (
 
   dispatch({
     type: Actions.DELETE,
+    payload: post.id,
+  });
+};
+
+export const handleToggleLike = async (
+  dispatch: React.Dispatch<Action>,
+  post: Post,
+) => {
+  await deletePostApi(post.id, post.userId);
+
+  dispatch({
+    type: Actions.LIKE,
     payload: post.id,
   });
 };

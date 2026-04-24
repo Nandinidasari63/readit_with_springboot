@@ -4,7 +4,6 @@ import CssBaseline from "@mui/material/CssBaseline";
 import Box from "@mui/material/Box";
 import Container from "@mui/material/Container";
 import { TextField } from "@mui/material";
-
 import {
   type Action,
   Actions,
@@ -18,11 +17,12 @@ import {
   addUserApi,
   fetchPosts,
   fetchUsers,
+  likeApi,
   subscribeApi,
+  unlikeApi,
   unsubscribeApi,
 } from "./api.tsx";
 import React from "react";
-
 const Title = () => (
   <div className="title-container">
     <p>Title</p>
@@ -42,7 +42,9 @@ const Body = () => (
   </div>
 );
 
-const PostItem = ({ data, ondelete, name, currentUserId, postOwnerId }) => {
+const PostItem = (
+  { data, ondelete, name, currentUserId, postOwnerId, onLike, isLike },
+) => {
   const isOwner = currentUserId === postOwnerId;
   return (
     <div
@@ -56,8 +58,23 @@ const PostItem = ({ data, ondelete, name, currentUserId, postOwnerId }) => {
       <p>{data.time}</p>
       <h2>{data.title}</h2>
       <p>{data.body}</p>
-
-      {isOwner && <button onClick={ondelete}>Delete</button>}
+      <button
+        type="button"
+        style={{ margin: "10px", padding: "3px" }}
+        onClick={onLike}
+      >
+        👍 {isLike ? "unlike" : "like"}
+      </button>
+      <p>{data.likes.length}</p>
+      {isOwner && (
+        <button
+          type="button"
+          onClick={ondelete}
+          style={{ margin: "10px", padding: "4px" }}
+        >
+          Delete
+        </button>
+      )}
     </div>
   );
 };
@@ -69,6 +86,10 @@ export const FeedList = (
   },
 ) => {
   return data.posts.map((post) => {
+    console.log(post);
+    const isLike = post.likes?.includes(data._id) ??
+      false;
+
     return (
       <PostItem
         key={post.id}
@@ -76,6 +97,7 @@ export const FeedList = (
         name={post.name}
         currentUserId={data._id}
         postOwnerId={post.userId}
+        isLike={isLike}
         ondelete={async () => {
           const confirmed = globalThis.confirm(
             "Are you sure you want to delete this post?",
@@ -83,6 +105,18 @@ export const FeedList = (
 
           if (!confirmed) return;
           await handleDeletePost(dispatch, post, data._id);
+        }}
+        onLike={async () => {
+          if (isLike) {
+            await unlikeApi(data._id, post.userId, post.id);
+          } else {
+            await likeApi(data._id, post.userId, post.id);
+          }
+
+          dispatch({
+            type: Actions.LIKE,
+            payload: post.id,
+          });
         }}
       />
     );
@@ -110,6 +144,7 @@ const PostForm = ({
       body,
       userId: user._id,
       name: user.name,
+      likes: [],
       time: format(new Date(), "MMMM d, yyyy h:mm a"),
     };
     handleAddPost(dispatch, newPost);

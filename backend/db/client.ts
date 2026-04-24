@@ -12,4 +12,5 @@ type UserPosts = {
   posts: Post[];
   subscriptions: string[];
 };
+
 export const postsCollection = db.collection<UserPosts>("users");

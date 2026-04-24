@@ -88,4 +88,18 @@ export class PostManager {
       { $pull: { subscriptions: targetUserId } },
     );
   }
+
+  async likePost(userId: string, postOwnerId: string, postId: number) {
+    return await postsCollection.updateOne(
+      { _id: new ObjectId(postOwnerId), "posts.id": postId },
+      { $addToSet: { "posts.$.likes": userId } },
+    );
+  }
+
+  async unlikePost(userId: string, postOwnerId: string, postId: number) {
+    return await postsCollection.updateOne(
+      { _id: new ObjectId(postOwnerId), "posts.id": postId },
+      { $pull: { "posts.$.likes": userId } },
+    );
+  }
 }

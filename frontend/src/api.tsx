@@ -71,3 +71,37 @@ export const unsubscribeApi = async (targetUserId: string) => {
     },
   });
 };
+
+export const likeApi = async (
+  currentUserId: string,
+  postOwnerId: string,
+  postId: number,
+) => {
+  await fetch("http://localhost:8080/like", {
+    method: "POST",
+    body: JSON.stringify({ currentUserId, postOwnerId, postId }),
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};
+
+export const unlikeApi = async (
+  currentUserId: string,
+  postOwnerId: string,
+  postId: number,
+) => {
+  await fetch("http://localhost:8080/unlike", {
+    method: "POST",
+    body: JSON.stringify({
+      currentUserId,
+      postOwnerId,
+      postId,
+    }),
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};

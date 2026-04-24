@@ -5,6 +5,7 @@ export type Post = {
   time: string;
   userId: string;
   name: string;
+  likes: string[];
 };
 
 export type FeedState = {
@@ -19,12 +20,14 @@ export enum Actions {
   ADD,
   DELETE,
   SET_INITIAL,
+  LIKE,
 }
 
 export type Action =
   | { type: Actions.ADD; payload: Post }
   | { type: Actions.DELETE; payload: number }
-  | { type: Actions.SET_INITIAL; payload: FeedState };
+  | { type: Actions.SET_INITIAL; payload: FeedState }
+  | { type: Actions.LIKE; payload: number };
 
 export const reducer = (state: FeedState, action: Action): FeedState => {
   switch (action.type) {
@@ -41,6 +44,21 @@ export const reducer = (state: FeedState, action: Action): FeedState => {
       return {
         ...state,
         posts: state.posts.filter((p) => p.id !== action.payload),
+      };
+
+    case Actions.LIKE:
+      return {
+        ...state,
+        posts: state.posts.map((post) =>
+          post.id === action.payload
+            ? {
+              ...post,
+              likes: post.likes.includes(state._id)
+                ? post.likes.filter((id) => id !== state._id)
+                : [...post.likes, state._id],
+            }
+            : post
+        ),
       };
 
     default:

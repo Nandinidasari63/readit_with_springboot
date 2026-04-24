@@ -153,3 +153,11 @@ Signup and login are the same at this point.
 - What is the flow?
 - Are you still a single page app? If not, how will it work?
 - Maybe contexts get useful now?
+
+# Likes
+
+- Each post can be liked.
+- Each post also shows how many likes it has received.
+- A liked post can be unliked
+- Your own post can be liked
+- You can't like a post multiple times.

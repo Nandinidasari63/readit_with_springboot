@@ -82,5 +82,18 @@ export const createApp = () => {
     return c.json({ message: "unsubscribed" });
   });
 
+  app.post("/like", async (c) => {
+    const { currentUserId, postOwnerId, postId } = await c.req.json();
+
+    await manager.likePost(currentUserId, postOwnerId, postId);
+    return c.json({ message: "subscribed" });
+  });
+
+  app.post("/unlike", async (c) => {
+    const { currentUserId, postOwnerId, postId } = await c.req.json();
+
+    await manager.unlikePost(currentUserId, postOwnerId, postId);
+    return c.json({ message: "unsubscribed" });
+  });
   return app;
 };
