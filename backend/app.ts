@@ -43,8 +43,8 @@ export const createApp = () => {
 
   app.post("/add", async (c) => {
     const body = await c.req.json();
-    const name = getCookie(c, "username");
-    await manager.addPost(body, name);
+    const userId = getCookie(c, "userId");
+    await manager.addPost(body, userId);
     return c.json({ message: "Post added" });
   });
 
@@ -56,14 +56,30 @@ export const createApp = () => {
 
   app.post("/adduser", async (c) => {
     const body: { name: string; password: string } = await c.req.json();
-    try {
-      const res = await manager.addUser(body);
-      console.log(res.insertedId);
-      setCookie(c, "userId", res.insertedId.toString());
-      return c.json({ message: "created user" }, 200);
-    } catch {
-      return c.json({ message: "already exist just logged in" }, 400);
-    }
+    const { user, isNew } = await manager.addUser(body);
+
+    setCookie(c, "userId", user._id.toString());
+    setCookie(c, "username", user.name);
+
+    return c.json({
+      message: isNew ? "User created" : "Logged in",
+    });
+  });
+
+  app.post("/subscribe", async (c) => {
+    const { targetUserId } = await c.req.json();
+    const userId = getCookie(c, "userId");
+
+    await manager.subscribe(userId!, targetUserId);
+    return c.json({ message: "subscribed" });
+  });
+
+  app.post("/unsubscribe", async (c) => {
+    const { targetUserId } = await c.req.json();
+    const userId = getCookie(c, "userId");
+
+    await manager.unsubscribe(userId!, targetUserId);
+    return c.json({ message: "unsubscribed" });
   });
 
   return app;

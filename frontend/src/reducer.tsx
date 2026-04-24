@@ -3,12 +3,16 @@ export type Post = {
   title: string | null;
   body: string | null;
   time: string;
+  userId: string;
+  name: string;
 };
 
 export type FeedState = {
+  _id: string;
   name: string;
   password: string;
   posts: Post[];
+  subscriptions: string[];
 };
 
 export enum Actions {
@@ -29,17 +33,13 @@ export const reducer = (state: FeedState, action: Action): FeedState => {
 
     case Actions.ADD:
       return {
-        _id: state._id,
-        name: state.name,
-        password: state.password,
+        ...state,
         posts: [...state.posts, action.payload],
       };
 
     case Actions.DELETE:
       return {
-        _id: state._id,
-        name: state.name,
-        password: state.password,
+        ...state,
         posts: state.posts.filter((p) => p.id !== action.payload),
       };
 

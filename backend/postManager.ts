@@ -4,8 +4,31 @@ import { type Post } from "../frontend/src/reducer.tsx";
 
 export class PostManager {
   async getPosts(userId: string | undefined) {
-    return (await postsCollection.find({ _id: new ObjectId(userId) })
-      .toArray())[0];
+    const user = await postsCollection.findOne({
+      _id: new ObjectId(userId),
+    });
+
+    if (!user) return null;
+
+    const subscribedUsers = await postsCollection.find({
+      _id: { $in: user.subscriptions.map((id) => new ObjectId(id)) },
+    }).toArray();
+
+    return {
+      _id: user._id.toString(),
+      name: user.name,
+      subscriptions: user.subscriptions,
+      posts: [
+        ...user.posts.map((p) => ({
+          ...p,
+        })),
+        ...subscribedUsers.flatMap((u) =>
+          u.posts.map((p) => ({
+            ...p,
+          }))
+        ),
+      ],
+    };
   }
 
   async getUsers() {
@@ -13,37 +36,56 @@ export class PostManager {
       .toArray());
   }
 
-  async addPost(data: Post, name: string | undefined) {
-    return await postsCollection.updateOne({ name: name }, {
-      $push: { posts: data },
-    });
+  async addPost(data: Post, userId: string | undefined) {
+    return await postsCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $push: { posts: data } },
+    );
   }
 
   async addUser({ name, password }: { name: string; password: string }) {
-    const isUserExist: boolean =
-      (await postsCollection.find({ name, password }).toArray())
-        .length !== 0;
+    const user = await postsCollection.findOne({ name, password });
 
-    if (isUserExist) {
-      throw Error("user already Exist");
+    if (user) {
+      return { user, isNew: false };
     }
-    return await postsCollection.insertOne({
+
+    const res = await postsCollection.insertOne({
       name,
       password,
       posts: [],
+      subscriptions: [],
     });
+
+    return {
+      user: {
+        _id: res.insertedId,
+        name,
+        password,
+        posts: [],
+      },
+      isNew: true,
+    };
   }
 
   async removePost(id: number, userId: string) {
-    console.log(
-      await postsCollection.updateOne(
-        { _id: new ObjectId(userId) },
-        { $pull: { posts: { id: id } } },
-      ),
-    );
     await postsCollection.updateOne(
       { _id: new ObjectId(userId) },
       { $pull: { posts: { id: id } } },
+    );
+  }
+
+  async subscribe(userId: string, targetUserId: string) {
+    return await postsCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $addToSet: { subscriptions: targetUserId } }, //if we push duplicates will there but addtoset solves that
+    );
+  }
+
+  async unsubscribe(userId: string, targetUserId: string) {
+    return await postsCollection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $pull: { subscriptions: targetUserId } },
     );
   }
 }

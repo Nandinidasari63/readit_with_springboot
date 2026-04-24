@@ -14,7 +14,13 @@ import {
 } from "./reducer.tsx";
 import { useEffect, useReducer, useState } from "react";
 import { handleAddPost, handleDeletePost } from "./actions.tsx";
-import { addUserApi, fetchPosts, fetchUsers } from "./api.tsx";
+import {
+  addUserApi,
+  fetchPosts,
+  fetchUsers,
+  subscribeApi,
+  unsubscribeApi,
+} from "./api.tsx";
 import React from "react";
 
 const Title = () => (
@@ -36,18 +42,23 @@ const Body = () => (
   </div>
 );
 
-const PostItem = (
-  { data, ondelete, name }: { data: Post; ondelete: () => void; name: string },
-) => {
-  console.log(name, data);
+const PostItem = ({ data, ondelete, name, currentUserId, postOwnerId }) => {
+  const isOwner = currentUserId === postOwnerId;
   return (
-    <>
+    <div
+      style={{
+        border: "1px solid black",
+        padding: "10px",
+        margin: "10px",
+      }}
+    >
       <h3>{name}</h3>
       <p>{data.time}</p>
       <h2>{data.title}</h2>
       <p>{data.body}</p>
-      <button type="button" onClick={ondelete}>Delete</button>
-    </>
+
+      {isOwner && <button onClick={ondelete}>Delete</button>}
+    </div>
   );
 };
 
@@ -57,27 +68,34 @@ export const FeedList = (
     dispatch: React.Dispatch<Action>;
   },
 ) => {
-  return data.posts.map((post) => (
-    <PostItem
-      key={post.id}
-      data={post}
-      name={data.name}
-      ondelete={async () => {
-        const confirmed = globalThis.confirm(
-          "Are you sure you want to delete this post?",
-        );
+  return data.posts.map((post) => {
+    console.log(post);
+    return (
+      <PostItem
+        key={post.id}
+        data={post}
+        name={post.name}
+        currentUserId={data._id}
+        postOwnerId={post.userId}
+        ondelete={async () => {
+          const confirmed = globalThis.confirm(
+            "Are you sure you want to delete this post?",
+          );
 
-        if (!confirmed) return;
-        await handleDeletePost(dispatch, post, data._id);
-      }}
-    />
-  ));
+          if (!confirmed) return;
+          await handleDeletePost(dispatch, post, data._id);
+        }}
+      />
+    );
+  });
 };
 
 const PostForm = ({
   dispatch,
+  user,
 }: {
   dispatch: React.Dispatch<Action>;
+  user: FeedState;
 }) => {
   const [id, setId] = useState(0);
   const submitPost = (e: React.SubmitEvent<HTMLFormElement>) => {
@@ -91,9 +109,10 @@ const PostForm = ({
       id,
       title,
       body,
+      userId: user._id,
+      name: user.name,
       time: format(new Date(), "MMMM d, yyyy h:mm a"),
     };
-
     handleAddPost(dispatch, newPost);
     setId((id) => id + 1);
   };
@@ -110,38 +129,77 @@ const PostForm = ({
   );
 };
 
-const SearchBar = ({ users }) => {
+const SearchBar = ({ onSearch, text }) => {
   return (
     <>
       <h3>Search users</h3>
       {
         <Box sx={{ width: 500, maxWidth: "100%" }}>
-          <TextField fullWidth label="fullWidth" id="fullWidth" name="title" />
+          <TextField
+            fullWidth
+            label="fullWidth"
+            id="fullWidth"
+            name="title"
+            value={text}
+            onChange={(e) => onSearch(e.target.value)}
+          />
         </Box>
       }
       <button type="button">Search</button>
-      <p>{users.length} users found</p>
+    </>
+  );
+};
+const Users = ({ users, searchedTerm, currentUser }) => {
+  if (searchedTerm === "") return null;
+
+  const filtered = users.filter(
+    (user) =>
+      user.name.includes(searchedTerm) &&
+      user._id !== currentUser._id, // remove logged in data
+  );
+
+  return (
+    <>
+      {filtered.map((user) => {
+        const isSubscribed = currentUser.subscriptions?.includes(user._id) ??
+          false;
+
+        return (
+          <div
+            key={user._id}
+            style={{
+              border: "1px solid black",
+              padding: "10px",
+              margin: "10px",
+            }}
+          >
+            <p>{user.name}</p>
+
+            {
+              <button
+                type="button"
+                onClick={() =>
+                  isSubscribed
+                    ? unsubscribeApi(user._id)
+                    : subscribeApi(user._id)}
+              >
+                {isSubscribed ? "Unsubscribe" : "Subscribe"}
+              </button>
+            }
+          </div>
+        );
+      })}
     </>
   );
 };
 
-const Users = ({ users }: { users: { name: string }[] }) => {
-  return users.map((user: { name: string }) => (
-    <div
-      className="user"
-      style={{ border: "1px solid black", padding: "5px", margin: "3px" }}
-    >
-      <p>{user.name}</p>
-      <button type="button">Subscribe</button>
-    </div>
-  ));
-};
+const UsersList = ({ users, currentUser }) => {
+  const [text, setText] = useState("");
 
-const UsersList = ({ users }) => {
   return (
     <>
-      <SearchBar users={users} />
-      <Users users={users} />
+      <SearchBar onSearch={setText} text={text} />
+      <Users users={users} searchedTerm={text} currentUser={currentUser} />
     </>
   );
 };
@@ -149,9 +207,11 @@ const UsersList = ({ users }) => {
 const App = () => {
   const [users, setUsers] = useState<FeedState[]>([]);
   const [state, dispatch] = useReducer(reducer, {
-    name: null,
-    password: null,
+    _id: "",
+    name: "",
+    password: "",
     posts: [],
+    subscriptions: [],
   });
 
   useEffect(() => {
@@ -178,8 +238,8 @@ const App = () => {
       <CssBaseline />
       <Container fixed>
         <Box sx={{ bgcolor: "rgba(212, 209, 209, 0.1)", padding: "20px" }}>
-          <UsersList users={users} />
-          <PostForm dispatch={dispatch} />
+          <UsersList users={users} currentUser={state} />
+          <PostForm dispatch={dispatch} user={state} />
           <FeedList dispatch={dispatch} data={state} />
         </Box>
       </Container>

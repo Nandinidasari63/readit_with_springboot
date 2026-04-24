@@ -49,3 +49,25 @@ export const addUserApi = async (name: string, password: string) => {
     },
   });
 };
+
+export const subscribeApi = async (targetUserId: string) => {
+  await fetch("http://localhost:8080/subscribe", {
+    method: "POST",
+    body: JSON.stringify({ targetUserId }),
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};
+
+export const unsubscribeApi = async (targetUserId: string) => {
+  await fetch("http://localhost:8080/unsubscribe", {
+    method: "POST",
+    body: JSON.stringify({ targetUserId }),
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+};
