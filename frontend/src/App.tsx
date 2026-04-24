@@ -69,7 +69,6 @@ export const FeedList = (
   },
 ) => {
   return data.posts.map((post) => {
-    console.log(post);
     return (
       <PostItem
         key={post.id}
@@ -149,7 +148,10 @@ const SearchBar = ({ onSearch, text }) => {
     </>
   );
 };
-const Users = ({ users, searchedTerm, currentUser }) => {
+
+const Users = (
+  { users, searchedTerm, currentUser, dispatch },
+) => {
   if (searchedTerm === "") return null;
 
   const filtered = users.filter(
@@ -178,10 +180,19 @@ const Users = ({ users, searchedTerm, currentUser }) => {
             {
               <button
                 type="button"
-                onClick={() =>
-                  isSubscribed
-                    ? unsubscribeApi(user._id)
-                    : subscribeApi(user._id)}
+                onClick={async () => {
+                  if (isSubscribed) {
+                    await unsubscribeApi(user._id);
+                  } else {
+                    await subscribeApi(user._id);
+                  }
+
+                  const result = await fetchPosts();
+                  dispatch({
+                    type: Actions.SET_INITIAL,
+                    payload: result.data,
+                  });
+                }}
               >
                 {isSubscribed ? "Unsubscribe" : "Subscribe"}
               </button>
@@ -193,13 +204,18 @@ const Users = ({ users, searchedTerm, currentUser }) => {
   );
 };
 
-const UsersList = ({ users, currentUser }) => {
+const UsersList = ({ users, currentUser, dispatch }) => {
   const [text, setText] = useState("");
 
   return (
     <>
       <SearchBar onSearch={setText} text={text} />
-      <Users users={users} searchedTerm={text} currentUser={currentUser} />
+      <Users
+        users={users}
+        searchedTerm={text}
+        currentUser={currentUser}
+        dispatch={dispatch}
+      />
     </>
   );
 };
@@ -238,7 +254,7 @@ const App = () => {
       <CssBaseline />
       <Container fixed>
         <Box sx={{ bgcolor: "rgba(212, 209, 209, 0.1)", padding: "20px" }}>
-          <UsersList users={users} currentUser={state} />
+          <UsersList users={users} currentUser={state} dispatch={dispatch} />
           <PostForm dispatch={dispatch} user={state} />
           <FeedList dispatch={dispatch} data={state} />
         </Box>
