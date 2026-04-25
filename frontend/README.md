@@ -161,3 +161,15 @@ Signup and login are the same at this point.
 - A liked post can be unliked
 - Your own post can be liked
 - You can't like a post multiple times.
+
+# Github OAuth
+
+- The user should be able to login to your system with my Github account.
+- Replace your current Login flow with Github OAuth.
+- Get the username and id from the Github account they've logged in with
+- Create mock data in your database pertaining to other users(since you probably
+  won't be able to login with multiple Github ids)
+
+f044d3fb5d68cb00d0f1c60ac49aa1f3a6787a14 - secret Ov23li6wQnWSJXHPuF1Y - id
+
+https://github.com/login/oauth/authorize?client_id=Ov23li6wQnWSJXHPuF1Y&redirect_uri=http://localhost:8000/auth/github/callback

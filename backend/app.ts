@@ -17,6 +17,10 @@ type Feed = {
 };
 
 export const createApp = () => {
+  const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_CLIENT_ID")!;
+  const GITHUB_REDIRECT_URI = Deno.env.get("GITHUB_REDIRECT_URI")!;
+  const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_CLIENT_SECRET")!;
+
   const manager = new PostManager();
   const app = new Hono();
 

@@ -1,12 +1,12 @@
 export const fetchPosts = async () => {
-  const res = await fetch("http://localhost:8080/posts", {
+  const res = await fetch("http://localhost:8000/posts", {
     credentials: "include",
   });
   return res.json();
 };
 
 export const fetchUsers = async () => {
-  const res = await fetch("http://localhost:8080/users", {
+  const res = await fetch("http://localhost:8000/users", {
     credentials: "include",
   });
   return res.json();
@@ -18,7 +18,7 @@ export const addPostApi = async (post: {
   body: string | null;
   time: string;
 }) => {
-  return await fetch("http://localhost:8080/add", {
+  return await fetch("http://localhost:8000/add", {
     method: "POST",
     body: JSON.stringify(post),
     credentials: "include",
@@ -29,7 +29,7 @@ export const addPostApi = async (post: {
 };
 
 export const deletePostApi = async (id: number, userId: string) => {
-  await fetch("http://localhost:8080/delete", {
+  await fetch("http://localhost:8000/delete", {
     method: "POST",
     body: JSON.stringify({ id: id, userId }),
     credentials: "include",
@@ -40,7 +40,7 @@ export const deletePostApi = async (id: number, userId: string) => {
 };
 
 export const addUserApi = async (name: string, password: string) => {
-  await fetch("http://localhost:8080/adduser", {
+  await fetch("http://localhost:8000/adduser", {
     method: "POST",
     body: JSON.stringify({ name, password }),
     credentials: "include",
@@ -51,7 +51,7 @@ export const addUserApi = async (name: string, password: string) => {
 };
 
 export const subscribeApi = async (targetUserId: string) => {
-  await fetch("http://localhost:8080/subscribe", {
+  await fetch("http://localhost:8000/subscribe", {
     method: "POST",
     body: JSON.stringify({ targetUserId }),
     credentials: "include",
@@ -62,7 +62,7 @@ export const subscribeApi = async (targetUserId: string) => {
 };
 
 export const unsubscribeApi = async (targetUserId: string) => {
-  await fetch("http://localhost:8080/unsubscribe", {
+  await fetch("http://localhost:8000/unsubscribe", {
     method: "POST",
     body: JSON.stringify({ targetUserId }),
     credentials: "include",
@@ -77,7 +77,7 @@ export const likeApi = async (
   postOwnerId: string,
   postId: number,
 ) => {
-  await fetch("http://localhost:8080/like", {
+  await fetch("http://localhost:8000/like", {
     method: "POST",
     body: JSON.stringify({ currentUserId, postOwnerId, postId }),
     credentials: "include",
@@ -92,7 +92,7 @@ export const unlikeApi = async (
   postOwnerId: string,
   postId: number,
 ) => {
-  await fetch("http://localhost:8080/unlike", {
+  await fetch("http://localhost:8000/unlike", {
     method: "POST",
     body: JSON.stringify({
       currentUserId,
