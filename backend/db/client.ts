@@ -1,4 +1,4 @@
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient, ObjectId, OptionalId } from "mongodb";
 
 const client = new MongoClient("mongodb://127.0.0.1:27017");
 
@@ -12,7 +12,7 @@ export type User = {
   password: string;
 };
 
-export const usersCollection = db.collection<User>("users");
+export const usersCollection = db.collection<OptionalId<User>>("users");
 
 export type Post = {
   _id: ObjectId;
@@ -23,7 +23,7 @@ export type Post = {
   name: string;
 };
 
-export const postsCollection = db.collection<Post>("posts");
+export const postsCollection = db.collection<OptionalId<Post>>("posts");
 
 export type Subscription = {
   _id: ObjectId;
@@ -31,7 +31,7 @@ export type Subscription = {
   targetUserId: string; // following
 };
 
-export const subscriptionsCollection = db.collection<Subscription>(
+export const subscriptionsCollection = db.collection<OptionalId<Subscription>>(
   "subscriptions",
 );
 
@@ -41,4 +41,4 @@ export type Like = {
   postId: string; // postid in string
 };
 
-export const likesCollection = db.collection<Like>("likes");
+export const likesCollection = db.collection<OptionalId<Like>>("likes");

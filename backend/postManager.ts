@@ -1,33 +1,37 @@
 import { ObjectId } from "mongodb";
-import { postsCollection } from "./db/client.ts";
+import { postsCollection, usersCollection } from "./db/client.ts";
 import { type Post } from "../frontend/src/reducer.tsx";
 
 export class PostManager {
   async getPosts(userId: string | undefined) {
-    const user = await postsCollection.findOne({
+    if (!userId) return null;
+
+    const user = await usersCollection.findOne({
       _id: new ObjectId(userId),
     });
 
-    if (!user) return null;
+    if (!user) {
+      return {
+        _id: "",
+        name: "",
+        subscriptions: [],
+        posts: [],
+      };
+    }
 
-    const subscribedUsers = await postsCollection.find({
-      _id: { $in: user.subscriptions.map((id) => new ObjectId(id)) },
+    const posts = await postsCollection.find({
+      userId: user._id.toString(),
     }).toArray();
 
     return {
       _id: user._id.toString(),
       name: user.name,
-      subscriptions: user.subscriptions,
-      posts: [
-        ...user.posts.map((p) => ({
-          ...p,
-        })),
-        ...subscribedUsers.flatMap((u) =>
-          u.posts.map((p) => ({
-            ...p,
-          }))
-        ),
-      ],
+      subscriptions: [],
+      posts: posts.map((p) => ({
+        ...p,
+        _id: p._id.toString(),
+        likes: [],
+      })),
     };
   }
 
@@ -37,24 +41,25 @@ export class PostManager {
   }
 
   async addPost(data: Post, userId: string | undefined) {
-    return await postsCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $push: { posts: data } },
-    );
+    if (!userId) return;
+
+    const result = await postsCollection.insertOne({
+      ...data,
+      userId,
+    });
+    return result.insertedId;
   }
 
   async addUser({ name, password }: { name: string; password: string }) {
-    const user = await postsCollection.findOne({ name, password });
+    const user = await usersCollection.findOne({ name, password });
 
     if (user) {
       return { user, isNew: false };
     }
 
-    const res = await postsCollection.insertOne({
+    const res = await usersCollection.insertOne({
       name,
       password,
-      posts: [],
-      subscriptions: [],
     });
 
     return {
@@ -62,7 +67,6 @@ export class PostManager {
         _id: res.insertedId,
         name,
         password,
-        posts: [],
       },
       isNew: true,
     };

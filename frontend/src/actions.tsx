@@ -1,24 +1,16 @@
 import { type Action, Actions, type Post } from "./reducer.tsx";
 import { addPostApi, deletePostApi } from "./api.tsx";
 
-export const handleAddPost = async (
-  dispatch: React.Dispatch<Action>,
-  newPost: {
-    id: number;
-    title: string | null;
-    body: string | null;
-    time: string;
-    likes: string[];
-    userId: string;
-    name: string;
-  },
-) => {
-  await addPostApi(newPost);
+export const handleAddPost = async (dispatch, newPost, currentUserId) => {
+  const res = await addPostApi(newPost);
 
   dispatch({
     type: Actions.ADD,
     payload: {
       ...newPost,
+      _id: res.insertedId,
+      likes: [],
+      userId: currentUserId,
     },
   });
 };

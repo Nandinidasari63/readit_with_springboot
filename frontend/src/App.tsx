@@ -79,20 +79,23 @@ const PostItem = (
   );
 };
 
-export const FeedList = (
-  { data, dispatch }: {
-    data: FeedState;
-    dispatch: React.Dispatch<Action>;
-  },
-) => {
+export const FeedList = ({
+  data,
+  dispatch,
+}) => {
+  if (!data || !Array.isArray(data.posts)) {
+    return <p>Loading posts...</p>;
+  }
+
   return data.posts.map((post) => {
-    console.log(post);
-    const isLike = post.likes?.includes(data._id) ??
-      false;
+    const postId = post._id; // ✅ new ID
+    const likes = post.likes ?? []; // ✅ safe fallback
+
+    const isLike = likes.includes(data._id);
 
     return (
       <PostItem
-        key={post.id}
+        key={postId}
         data={post}
         name={post.name}
         currentUserId={data._id}
@@ -104,18 +107,19 @@ export const FeedList = (
           );
 
           if (!confirmed) return;
+
           await handleDeletePost(dispatch, post, data._id);
         }}
         onLike={async () => {
           if (isLike) {
-            await unlikeApi(data._id, post.userId, post.id);
+            await unlikeApi(data._id, post.userId, postId);
           } else {
-            await likeApi(data._id, post.userId, post.id);
+            await likeApi(data._id, post.userId, postId);
           }
 
           dispatch({
             type: Actions.LIKE,
-            payload: post.id,
+            payload: postId, // ✅ use _id
           });
         }}
       />
@@ -130,7 +134,6 @@ const PostForm = ({
   dispatch: React.Dispatch<Action>;
   user: FeedState;
 }) => {
-  const [id, setId] = useState(0);
   const submitPost = (e: React.SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -139,16 +142,12 @@ const PostForm = ({
     const body = formData.get("body") as string;
 
     const newPost = {
-      id,
       title,
       body,
-      userId: user._id,
       name: user.name,
-      likes: [],
       time: format(new Date(), "MMMM d, yyyy h:mm a"),
     };
-    handleAddPost(dispatch, newPost);
-    setId((id) => id + 1);
+    handleAddPost(dispatch, newPost, user._id);
   };
 
   return (

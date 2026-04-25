@@ -33,6 +33,97 @@ export const createApp = () => {
       credentials: true,
     }),
   );
+  app.get("/auth/github/login", (c) => {
+    const params = new URLSearchParams({
+      client_id: GITHUB_CLIENT_ID,
+      redirect_uri: GITHUB_REDIRECT_URI,
+    });
+
+    const githubAuthorizeUrl =
+      `https://github.com/login/oauth/authorize?${params.toString()}`;
+
+    return c.redirect(githubAuthorizeUrl);
+  });
+
+  app.get("/auth/github/callback", async (c) => {
+    const url = new URL(c.req.url);
+    const code = url.searchParams.get("code");
+
+    if (!code) {
+      return c.text("Missing code in query", 400);
+    }
+
+    const tokenResponse = await fetch(
+      "https://github.com/login/oauth/access_token",
+      {
+        method: "POST",
+        headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          client_id: GITHUB_CLIENT_ID,
+          client_secret: GITHUB_CLIENT_SECRET,
+          code,
+          redirect_uri: GITHUB_REDIRECT_URI,
+        }),
+      },
+    );
+
+    if (!tokenResponse.ok) {
+      const text = await tokenResponse.text();
+      return c.text(`Failed to get access token: ${text}`, 500);
+    }
+
+    const tokenJson = await tokenResponse.json() as {
+      access_token?: string;
+      token_type?: string;
+      scope?: string;
+    };
+
+    const accessToken = tokenJson.access_token;
+
+    if (!accessToken) {
+      return c.text("No access token returned from GitHub", 500);
+    }
+
+    //  Use access token to get user profile
+    const userResponse = await fetch("https://api.github.com/user", {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`,
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "github-oauth-demo",
+      },
+    });
+
+    if (!userResponse.ok) {
+      const text = await userResponse.text();
+      return c.text(`Failed to fetch user profile: ${text}`, 500);
+    }
+
+    const userJson = await userResponse.json() as {
+      id: number;
+      login: string;
+    };
+
+    const githubLogin = userJson.login;
+
+    const { user } = await manager.addUser({
+      name: githubLogin,
+      password: "github_oauth",
+    });
+
+    setCookie(c, "userId", user._id.toString(), {
+      path: "/",
+      httpOnly: false,
+    });
+    setCookie(c, "username", user.name, {
+      path: "/",
+      httpOnly: false,
+    });
+
+    return c.redirect("http://localhost:5173/");
+  });
 
   app.get("/posts", async (c) => {
     const userId = getCookie(c, "userId");
@@ -48,8 +139,10 @@ export const createApp = () => {
   app.post("/add", async (c) => {
     const body = await c.req.json();
     const userId = getCookie(c, "userId");
-    await manager.addPost(body, userId);
-    return c.json({ message: "Post added" });
+
+    const insertedId = await manager.addPost(body, userId);
+
+    return c.json({ insertedId });
   });
 
   app.post("/delete", async (c) => {

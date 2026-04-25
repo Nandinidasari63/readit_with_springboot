@@ -13,12 +13,11 @@ export const fetchUsers = async () => {
 };
 
 export const addPostApi = async (post: {
-  id: number;
   title: string | null;
   body: string | null;
   time: string;
 }) => {
-  return await fetch("http://localhost:8000/add", {
+  const res = await fetch("http://localhost:8000/add", {
     method: "POST",
     body: JSON.stringify(post),
     credentials: "include",
@@ -26,6 +25,8 @@ export const addPostApi = async (post: {
       "Content-Type": "application/json",
     },
   });
+
+  return res.json();
 };
 
 export const deletePostApi = async (id: number, userId: string) => {

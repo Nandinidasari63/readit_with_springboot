@@ -1,11 +1,10 @@
+import { act } from "react";
+
 export type Post = {
-  id: number;
   title: string | null;
   body: string | null;
   time: string;
-  userId: string;
   name: string;
-  likes: string[];
 };
 
 export type FeedState = {
@@ -31,9 +30,10 @@ export type Action =
 
 export const reducer = (state: FeedState, action: Action): FeedState => {
   switch (action.type) {
-    case Actions.SET_INITIAL:
+    case Actions.SET_INITIAL: {
+      console.log(action.payload);
       return action.payload;
-
+    }
     case Actions.ADD:
       return {
         ...state,
