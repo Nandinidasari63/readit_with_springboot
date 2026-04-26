@@ -65,16 +65,29 @@ export class PostManager {
     };
   }
   async getUsers() {
-    return await usersCollection.find({}).toArray();
+    const users = await usersCollection.find({}).toArray();
+
+    return users.map((u) => ({
+      ...u,
+      _id: u._id.toString(),
+    }));
   }
 
   async addPost(data: Post, userId: string | undefined) {
     if (!userId) return;
-    console.log(data, userId);
+
+    const user = await usersCollection.findOne({
+      _id: new ObjectId(userId),
+    });
+
+    if (!user) return;
+
     const result = await postsCollection.insertOne({
       ...data,
       userId,
+      name: user.name,
     });
+
     return result.insertedId.toString();
   }
 

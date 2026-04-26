@@ -3,6 +3,11 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { PostManager } from "./postManager.ts";
 import { getCookie, setCookie } from "hono/cookie";
+import { FeedService } from "./services/feed_service.ts";
+import { UserService } from "./services/user_service.ts";
+import { PostService } from "./services/post_service.ts";
+import { LikeService } from "./services/like_service.ts";
+import { SubscriptionService } from "./services/subscription_service.ts";
 
 type post = {
   id: number;
@@ -17,12 +22,21 @@ type Feed = {
 };
 
 export const createApp = () => {
+  const userService = new UserService();
+  const postService = new PostService();
+  const likeService = new LikeService();
+  const subscriptionService = new SubscriptionService();
+  const app = new Hono();
+
+  const feedService = new FeedService(
+    userService,
+    postService,
+    likeService,
+    subscriptionService,
+  );
   const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_CLIENT_ID")!;
   const GITHUB_REDIRECT_URI = Deno.env.get("GITHUB_REDIRECT_URI")!;
   const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_CLIENT_SECRET")!;
-
-  const manager = new PostManager();
-  const app = new Hono();
 
   app.use(logger());
 
@@ -127,33 +141,48 @@ export const createApp = () => {
 
   app.get("/posts", async (c) => {
     const userId = getCookie(c, "userId");
-    const user = await manager.getPosts(userId);
-    return c.json({ data: user });
+
+    const data = await feedService.getFeed(userId);
+
+    return c.json({ data });
   });
 
   app.get("/users", async (c) => {
-    const users = await manager.getUsers();
+    const users = await userService.getAllUsers();
     return c.json({ data: users });
   });
 
   app.post("/add", async (c) => {
     const body = await c.req.json();
-    const userId = getCookie(c, "userId");
 
-    const insertedId = await manager.addPost(body, userId);
+    const userId = getCookie(c, "userId") as string;
+
+    const user = await userService.getUser(userId);
+    if (!user) {
+      return c.json({ error: "User not found" }, 400);
+    }
+
+    const insertedId = await postService.addPost(
+      body,
+      userId,
+      user.name,
+    );
 
     return c.json({ insertedId });
   });
 
   app.post("/delete", async (c) => {
     const body = await c.req.json();
-    await manager.removePost(body.id, body.userId);
+    await postService.deletePost(body.id, body.userId);
     return c.json({ message: "Deleted" });
   });
 
   app.post("/adduser", async (c) => {
     const body: { name: string; password: string } = await c.req.json();
-    const { user, isNew } = await manager.addUser(body);
+    const { user, isNew } = await userService.addUser(
+      body.name,
+      body.password,
+    );
 
     setCookie(c, "userId", user._id.toString());
     setCookie(c, "username", user.name);
@@ -167,7 +196,7 @@ export const createApp = () => {
     const { targetUserId } = await c.req.json();
     const userId = getCookie(c, "userId");
 
-    await manager.subscribe(userId!, targetUserId);
+    await subscriptionService.subscribe(userId!, targetUserId);
     return c.json({ message: "subscribed" });
   });
 
@@ -175,21 +204,21 @@ export const createApp = () => {
     const { targetUserId } = await c.req.json();
     const userId = getCookie(c, "userId");
 
-    await manager.unsubscribe(userId!, targetUserId);
+    await subscriptionService.unsubscribe(userId!, targetUserId);
     return c.json({ message: "unsubscribed" });
   });
 
   app.post("/like", async (c) => {
     const { currentUserId, postId } = await c.req.json();
 
-    await manager.likePost(currentUserId, postId);
+    await likeService.like(currentUserId, postId);
     return c.json({ message: "subscribed" });
   });
 
   app.post("/unlike", async (c) => {
     const { currentUserId, postId } = await c.req.json();
 
-    await manager.unlikePost(currentUserId, postId);
+    await likeService.unlike(currentUserId, postId);
     return c.json({ message: "unsubscribed" });
   });
   return app;
