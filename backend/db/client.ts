@@ -14,7 +14,7 @@ export type User = {
 
 export const usersCollection = db.collection<OptionalId<User>>("users");
 
-export type Post = {
+type Post = {
   _id: ObjectId;
   title: string | null;
   body: string | null;

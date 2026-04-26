@@ -180,16 +180,16 @@ export const createApp = () => {
   });
 
   app.post("/like", async (c) => {
-    const { currentUserId, postOwnerId, postId } = await c.req.json();
+    const { currentUserId, postId } = await c.req.json();
 
-    await manager.likePost(currentUserId, postOwnerId, postId);
+    await manager.likePost(currentUserId, postId);
     return c.json({ message: "subscribed" });
   });
 
   app.post("/unlike", async (c) => {
-    const { currentUserId, postOwnerId, postId } = await c.req.json();
+    const { currentUserId, postId } = await c.req.json();
 
-    await manager.unlikePost(currentUserId, postOwnerId, postId);
+    await manager.unlikePost(currentUserId, postId);
     return c.json({ message: "unsubscribed" });
   });
   return app;

@@ -1,108 +1,77 @@
-export const fetchPosts = async () => {
-  const res = await fetch("http://localhost:8000/posts", {
+const BASE_URL = "http://localhost:8000";
+
+const request = async (url: string, options: RequestInit = {}) => {
+  const res = await fetch(`${BASE_URL}${url}`, {
     credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    ...options,
   });
+
+  if (!res.ok) {
+    throw new Error(`API Error: ${res.status}`);
+  }
+
   return res.json();
 };
 
 export const fetchUsers = async () => {
-  const res = await fetch("http://localhost:8000/users", {
-    credentials: "include",
+  return await request("/users");
+};
+
+export const addUserApi = async (name: string, password: string) => {
+  return await request("/adduser", {
+    method: "POST",
+    body: JSON.stringify({ name, password }),
   });
-  return res.json();
+};
+export const fetchPosts = async () => {
+  return await request("/posts");
 };
 
 export const addPostApi = async (post: {
   title: string | null;
   body: string | null;
   time: string;
+  name: string;
 }) => {
-  const res = await fetch("http://localhost:8000/add", {
+  return await request("/add", {
     method: "POST",
     body: JSON.stringify(post),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
-
-  return res.json();
 };
 
-export const deletePostApi = async (id: number, userId: string) => {
-  await fetch("http://localhost:8000/delete", {
+export const deletePostApi = async (id: string, userId: string) => {
+  return await request("/delete", {
     method: "POST",
-    body: JSON.stringify({ id: id, userId }),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    body: JSON.stringify({ id, userId }),
   });
 };
-
-export const addUserApi = async (name: string, password: string) => {
-  await fetch("http://localhost:8000/adduser", {
-    method: "POST",
-    body: JSON.stringify({ name, password }),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
-};
-
 export const subscribeApi = async (targetUserId: string) => {
-  await fetch("http://localhost:8000/subscribe", {
+  return await request("/subscribe", {
     method: "POST",
     body: JSON.stringify({ targetUserId }),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
 };
 
 export const unsubscribeApi = async (targetUserId: string) => {
-  await fetch("http://localhost:8000/unsubscribe", {
+  return await request("/unsubscribe", {
     method: "POST",
     body: JSON.stringify({ targetUserId }),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
   });
 };
 
-export const likeApi = async (
-  currentUserId: string,
-  postOwnerId: string,
-  postId: number,
-) => {
-  await fetch("http://localhost:8000/like", {
+export const likeApi = async (userId: string, postId: string) => {
+  return await request("/like", {
     method: "POST",
-    body: JSON.stringify({ currentUserId, postOwnerId, postId }),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    body: JSON.stringify({ currentUserId: userId, postId }),
   });
 };
 
-export const unlikeApi = async (
-  currentUserId: string,
-  postOwnerId: string,
-  postId: number,
-) => {
-  await fetch("http://localhost:8000/unlike", {
+export const unlikeApi = async (userId: string, postId: string) => {
+  return await request("/unlike", {
     method: "POST",
-    body: JSON.stringify({
-      currentUserId,
-      postOwnerId,
-      postId,
-    }),
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    body: JSON.stringify({ currentUserId: userId, postId }),
   });
 };

@@ -1,53 +1,81 @@
 import { ObjectId } from "mongodb";
-import { postsCollection, usersCollection } from "./db/client.ts";
-import { type Post } from "../frontend/src/reducer.tsx";
+import {
+  likesCollection,
+  postsCollection,
+  subscriptionsCollection,
+  usersCollection,
+} from "./db/client.ts";
+
+type Post = {
+  _id: ObjectId;
+  title: string | null;
+  body: string | null;
+  time: string;
+  userId: string;
+  name: string;
+};
 
 export class PostManager {
   async getPosts(userId: string | undefined) {
     if (!userId) return null;
 
+    // 1. current user
     const user = await usersCollection.findOne({
       _id: new ObjectId(userId),
     });
 
-    if (!user) {
-      return {
-        _id: "",
-        name: "",
-        subscriptions: [],
-        posts: [],
-      };
-    }
+    if (!user) return null;
 
-    const posts = await postsCollection.find({
-      userId: user._id.toString(),
-    }).toArray();
+    // 2. subscriptions
+    const subs = await subscriptionsCollection
+      .find({ userId })
+      .toArray();
+
+    const authorIds = [
+      userId,
+      ...subs.map((s) => s.targetUserId),
+    ];
+
+    // 3. posts
+    const posts = await postsCollection
+      .find({ userId: { $in: authorIds } })
+      .toArray();
+
+    // 4. likes
+    const postIds = posts.map((p) => p._id.toString());
+
+    const likes = await likesCollection
+      .find({ postId: { $in: postIds } })
+      .toArray();
+
+    // 5. map likes → posts
+    const postsWithLikes = posts.map((post) => ({
+      ...post,
+      _id: post._id.toString(),
+      likes: likes
+        .filter((l) => l.postId === post._id.toString())
+        .map((l) => l.userId),
+    }));
 
     return {
       _id: user._id.toString(),
       name: user.name,
-      subscriptions: [],
-      posts: posts.map((p) => ({
-        ...p,
-        _id: p._id.toString(),
-        likes: [],
-      })),
+      subscriptions: subs.map((s) => s.targetUserId),
+      posts: postsWithLikes,
     };
   }
-
   async getUsers() {
-    return (await postsCollection.find({})
-      .toArray());
+    return await usersCollection.find({}).toArray();
   }
 
   async addPost(data: Post, userId: string | undefined) {
     if (!userId) return;
-
+    console.log(data, userId);
     const result = await postsCollection.insertOne({
       ...data,
       userId,
     });
-    return result.insertedId;
+    return result.insertedId.toString();
   }
 
   async addUser({ name, password }: { name: string; password: string }) {
@@ -64,7 +92,7 @@ export class PostManager {
 
     return {
       user: {
-        _id: res.insertedId,
+        _id: res.insertedId.toString(),
         name,
         password,
       },
@@ -72,38 +100,38 @@ export class PostManager {
     };
   }
 
-  async removePost(id: number, userId: string) {
-    await postsCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $pull: { posts: { id: id } } },
-    );
+  async removePost(id: string, userId: string) {
+    await postsCollection.deleteOne({
+      _id: new ObjectId(id),
+      userId,
+    });
   }
 
   async subscribe(userId: string, targetUserId: string) {
-    return await postsCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $addToSet: { subscriptions: targetUserId } }, //if we push duplicates will there but addtoset solves that
+    await subscriptionsCollection.updateOne(
+      { userId, targetUserId },
+      { $set: { userId, targetUserId } },
+      { upsert: true },
     );
   }
-
   async unsubscribe(userId: string, targetUserId: string) {
-    return await postsCollection.updateOne(
-      { _id: new ObjectId(userId) },
-      { $pull: { subscriptions: targetUserId } },
+    await subscriptionsCollection.deleteOne({
+      userId,
+      targetUserId,
+    });
+  }
+  async likePost(userId: string, postId: string) {
+    await likesCollection.updateOne(
+      { userId, postId },
+      { $set: { userId, postId } },
+      { upsert: true },
     );
   }
 
-  async likePost(userId: string, postOwnerId: string, postId: number) {
-    return await postsCollection.updateOne(
-      { _id: new ObjectId(postOwnerId), "posts.id": postId },
-      { $addToSet: { "posts.$.likes": userId } },
-    );
-  }
-
-  async unlikePost(userId: string, postOwnerId: string, postId: number) {
-    return await postsCollection.updateOne(
-      { _id: new ObjectId(postOwnerId), "posts.id": postId },
-      { $pull: { "posts.$.likes": userId } },
-    );
+  async unlikePost(userId: string, postId: string) {
+    await likesCollection.deleteOne({
+      userId,
+      postId,
+    });
   }
 }
