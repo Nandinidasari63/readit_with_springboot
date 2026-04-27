@@ -13,7 +13,15 @@ export class PostService {
     }));
   }
 
-  async addPost(data: any, userId: string, name: string) {
+  async addPost(
+    data: {
+      title: string | null;
+      body: string | null;
+      time: string;
+    },
+    userId: string,
+    name: string,
+  ) {
     const result = await postsCollection.insertOne({
       ...data,
       userId,

@@ -14,7 +14,7 @@ export type User = {
 
 export const usersCollection = db.collection<OptionalId<User>>("users");
 
-type Post = {
+export type Post = {
   _id: ObjectId;
   title: string | null;
   body: string | null;
@@ -22,7 +22,6 @@ type Post = {
   userId: string;
   name: string;
 };
-
 export const postsCollection = db.collection<OptionalId<Post>>("posts");
 
 export type Subscription = {

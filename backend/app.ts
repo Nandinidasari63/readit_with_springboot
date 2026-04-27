@@ -1,7 +1,6 @@
 import { cors } from "hono/cors";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { PostManager } from "./postManager.ts";
 import { getCookie, setCookie } from "hono/cookie";
 import { FeedService } from "./services/feed_service.ts";
 import { UserService } from "./services/user_service.ts";
@@ -122,10 +121,10 @@ export const createApp = () => {
 
     const githubLogin = userJson.login;
 
-    const { user } = await manager.addUser({
-      name: githubLogin,
-      password: "github_oauth",
-    });
+    const { user } = await userService.addUser(
+      githubLogin,
+      "github_oauth",
+    );
 
     setCookie(c, "userId", user._id.toString(), {
       path: "/",
@@ -212,14 +211,14 @@ export const createApp = () => {
     const { currentUserId, postId } = await c.req.json();
 
     await likeService.like(currentUserId, postId);
-    return c.json({ message: "subscribed" });
+    return c.json({ message: "liked" });
   });
 
   app.post("/unlike", async (c) => {
     const { currentUserId, postId } = await c.req.json();
 
     await likeService.unlike(currentUserId, postId);
-    return c.json({ message: "unsubscribed" });
+    return c.json({ message: "unliked" });
   });
   return app;
 };

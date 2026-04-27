@@ -1,6 +1,14 @@
 // services/LikeService.ts
 import { likesCollection } from "../db/client.ts";
 
+type Post = {
+  _id: string;
+  userId: string;
+  title: string | null;
+  body: string | null;
+  time: string;
+  name: string;
+};
 export class LikeService {
   async like(userId: string, postId: string) {
     await likesCollection.updateOne(
@@ -14,8 +22,8 @@ export class LikeService {
     await likesCollection.deleteOne({ userId, postId });
   }
 
-  async attachLikes(posts: any[]) {
-    const postIds = posts.map((p) => p._id);
+  async attachLikes(posts: Post[]) {
+    const postIds = posts.map((p: Post) => p._id);
 
     const likes = await likesCollection
       .find({ postId: { $in: postIds } })
