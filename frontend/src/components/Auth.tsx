@@ -1,36 +1,42 @@
-import { addUserApi } from "../api.tsx";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { App } from "../App.tsx";
+import { fetchPosts } from "../api.tsx";
 
-export const Login = ({ setLogStatus }) => {
-  const onsubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const name = formData.get("username") as string;
-    const password = formData.get("password") as string;
-    await addUserApi(name, password);
-    setLogStatus(true);
+export const Login = () => {
+  const handleGithubLogin = () => {
+    globalThis.location.href = "http://localhost:8000/auth/github/login";
   };
 
   return (
-    <>
-      <form
-        className="login"
-        onSubmit={onsubmit}
-      >
-        <h2>Login</h2>
-        <input type="text" placeholder="enter name" name="username" />
-        <input type="password" placeholder="enter password" name="password" />
-        <button type="submit">
-          Login
-        </button>
-      </form>
-    </>
+    <div className="login">
+      <h2>Login</h2>
+      <button type="button" onClick={handleGithubLogin}>
+        Login with GitHub
+      </button>
+    </div>
   );
 };
-
 export const Auth = () => {
-  const [islogged, setLogStatus] = useState(false);
-  const component = islogged ? <App /> : <Login setLogStatus={setLogStatus} />;
-  return component;
+  const [isLogged, setIsLogged] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      try {
+        const res = await fetchPosts();
+        if (res?.data?._id) {
+          setIsLogged(true);
+        } else {
+          setIsLogged(false);
+        }
+      } catch {
+        setIsLogged(false);
+      }
+    };
+
+    checkLogin();
+  }, []);
+
+  if (isLogged === null) return <p>Loading...</p>;
+
+  return isLogged ? <App /> : <Login />;
 };

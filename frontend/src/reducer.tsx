@@ -11,7 +11,6 @@ export type Post = {
 export type FeedState = {
   _id: string;
   name: string;
-  password: string;
   posts: Post[];
   subscriptions: string[];
 };

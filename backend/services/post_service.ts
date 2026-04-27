@@ -3,8 +3,11 @@ import { postsCollection } from "../db/client.ts";
 
 export class PostService {
   async getPostsByUsers(userIds: string[]) {
+    if (!userIds.length) return [];
+
     const posts = await postsCollection
       .find({ userId: { $in: userIds } })
+      .sort({ time: -1 })
       .toArray();
 
     return posts.map((p) => ({
@@ -14,16 +17,17 @@ export class PostService {
   }
 
   async addPost(
-    data: {
-      title: string | null;
-      body: string | null;
-      time: string;
-    },
+    data: { title: string | null; body: string | null },
     userId: string,
     name: string,
   ) {
+    if (!data.title && !data.body) {
+      throw new Error("Post cannot be empty");
+    }
+
     const result = await postsCollection.insertOne({
       ...data,
+      time: new Date().toISOString(),
       userId,
       name,
     });
@@ -32,9 +36,17 @@ export class PostService {
   }
 
   async deletePost(postId: string, userId: string) {
-    await postsCollection.deleteOne({
+    if (!ObjectId.isValid(postId)) {
+      throw new Error("Invalid postId");
+    }
+
+    const result = await postsCollection.deleteOne({
       _id: new ObjectId(postId),
       userId,
     });
+
+    if (result.deletedCount === 0) {
+      throw new Error("Post not found or unauthorized");
+    }
   }
 }

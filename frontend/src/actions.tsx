@@ -52,12 +52,11 @@ export const handleToggleLike = async (
   dispatch: React.Dispatch<Action>,
   postId: string,
   isLiked: boolean,
-  userId: string,
 ) => {
   if (isLiked) {
-    await unlikeApi(userId, postId);
+    await unlikeApi(postId);
   } else {
-    await likeApi(userId, postId);
+    await likeApi(postId);
   }
 
   dispatch({

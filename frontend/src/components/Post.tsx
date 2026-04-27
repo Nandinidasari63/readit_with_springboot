@@ -97,7 +97,7 @@ export const FeedList = ({
 
           await handleDeletePost(dispatch, post, data._id);
         }}
-        onLike={() => handleToggleLike(dispatch, postId, isLike, data._id)}
+        onLike={() => handleToggleLike(dispatch, postId, isLike)}
       />
     );
   });

@@ -61,17 +61,16 @@ export const unsubscribeApi = async (targetUserId: string) => {
     body: JSON.stringify({ targetUserId }),
   });
 };
-
-export const likeApi = async (userId: string, postId: string) => {
+export const likeApi = async (postId: string) => {
   return await request("/like", {
     method: "POST",
-    body: JSON.stringify({ currentUserId: userId, postId }),
+    body: JSON.stringify({ postId }),
   });
 };
 
-export const unlikeApi = async (userId: string, postId: string) => {
+export const unlikeApi = async (postId: string) => {
   return await request("/unlike", {
     method: "POST",
-    body: JSON.stringify({ currentUserId: userId, postId }),
+    body: JSON.stringify({ postId }),
   });
 };

@@ -17,20 +17,20 @@ export class UserService {
     }));
   }
 
-  async addUser(name: string, password: string) {
-    const existing = await usersCollection.findOne({ name, password });
+  async findOrCreateGithubUser(name: string, githubId: number) {
+    const user = await usersCollection.findOne({ githubId });
 
-    if (existing) return { user: existing, isNew: false };
+    if (user) return user;
 
-    const res = await usersCollection.insertOne({ name, password });
+    const res = await usersCollection.insertOne({
+      name,
+      githubId,
+    });
 
     return {
-      user: {
-        _id: res.insertedId.toString(),
-        name,
-        password,
-      },
-      isNew: true,
+      _id: res.insertedId.toString(),
+      name,
+      githubId,
     };
   }
 }

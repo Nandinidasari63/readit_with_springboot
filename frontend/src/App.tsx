@@ -14,7 +14,6 @@ export const App = () => {
   const [state, dispatch] = useReducer(reducer, {
     _id: "",
     name: "",
-    password: "",
     posts: [],
     subscriptions: [],
   });

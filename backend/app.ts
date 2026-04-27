@@ -50,6 +50,7 @@ export const createApp = () => {
     const params = new URLSearchParams({
       client_id: GITHUB_CLIENT_ID,
       redirect_uri: GITHUB_REDIRECT_URI,
+      scope: "read:user",
     });
 
     const githubAuthorizeUrl =
@@ -119,21 +120,12 @@ export const createApp = () => {
       login: string;
     };
 
-    const githubLogin = userJson.login;
-
-    const { user } = await userService.addUser(
-      githubLogin,
-      "github_oauth",
+    const user = await userService.findOrCreateGithubUser(
+      userJson.login,
+      userJson.id,
     );
-
-    setCookie(c, "userId", user._id.toString(), {
-      path: "/",
-      httpOnly: false,
-    });
-    setCookie(c, "username", user.name, {
-      path: "/",
-      httpOnly: false,
-    });
+    setCookie(c, "userId", user._id.toString());
+    setCookie(c, "username", user.name);
 
     return c.redirect("http://localhost:5173/");
   });
@@ -176,21 +168,6 @@ export const createApp = () => {
     return c.json({ message: "Deleted" });
   });
 
-  app.post("/adduser", async (c) => {
-    const body: { name: string; password: string } = await c.req.json();
-    const { user, isNew } = await userService.addUser(
-      body.name,
-      body.password,
-    );
-
-    setCookie(c, "userId", user._id.toString());
-    setCookie(c, "username", user.name);
-
-    return c.json({
-      message: isNew ? "User created" : "Logged in",
-    });
-  });
-
   app.post("/subscribe", async (c) => {
     const { targetUserId } = await c.req.json();
     const userId = getCookie(c, "userId");
@@ -208,17 +185,20 @@ export const createApp = () => {
   });
 
   app.post("/like", async (c) => {
-    const { currentUserId, postId } = await c.req.json();
+    const { postId } = await c.req.json();
+    const userId = getCookie(c, "userId");
 
-    await likeService.like(currentUserId, postId);
+    await likeService.like(userId!, postId);
     return c.json({ message: "liked" });
   });
 
   app.post("/unlike", async (c) => {
-    const { currentUserId, postId } = await c.req.json();
+    const { postId } = await c.req.json();
+    const userId = getCookie(c, "userId");
 
-    await likeService.unlike(currentUserId, postId);
+    await likeService.unlike(userId!, postId);
     return c.json({ message: "unliked" });
   });
+
   return app;
 };
