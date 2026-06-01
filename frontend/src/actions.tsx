@@ -18,6 +18,7 @@ export const handleAddPost = async (
     time: string;
     name: string;
     imageUrl?: string;
+    videoUrl?: string;
   },
   currentUserId: string,
 ) => {

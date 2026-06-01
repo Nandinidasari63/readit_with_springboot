@@ -23,11 +23,18 @@ type Feed = {
 
 const UPLOADS_DIR = "./uploads";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
   "image/gif",
   "image/webp",
+]);
+const ALLOWED_VIDEO_MIME_TYPES = new Set([
+  "video/mp4",
+  "video/quicktime",  // MOV
+  "video/x-msvideo", // AVI
+  "video/webm",
 ]);
 const MIME_TO_EXT: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -100,6 +107,64 @@ export const createApp = () => {
     return c.json({ url: `/uploads/${filename}` });
   });
 
+  app.post("/upload-video", async (c) => {
+    const userId = getCookie(c, "userId");
+    if (!userId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const formData = await c.req.formData();
+    const file = formData.get("video");
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: "No video file provided" }, 400);
+    }
+
+    if (!ALLOWED_VIDEO_MIME_TYPES.has(file.type)) {
+      return c.json(
+        { error: "Unsupported format. Use MP4, MOV, AVI, or WEBM." },
+        400,
+      );
+    }
+
+    if (file.size > MAX_VIDEO_SIZE) {
+      return c.json({ error: "File exceeds 500 MB limit." }, 400);
+    }
+
+    const id = crypto.randomUUID();
+    const tempPath = `${UPLOADS_DIR}/tmp_${id}`;
+    const outputPath = `${UPLOADS_DIR}/${id}.mp4`;
+
+    const buffer = await file.arrayBuffer();
+    await Deno.writeFile(tempPath, new Uint8Array(buffer));
+
+    const ffmpeg = new Deno.Command("ffmpeg", {
+      args: [
+        "-i", tempPath,
+        "-c:v", "libx264",
+        "-crf", "23",
+        "-preset", "fast",
+        "-c:a", "aac",
+        "-movflags", "+faststart",
+        "-y",
+        outputPath,
+      ],
+      stdout: "null",
+      stderr: "null",
+    });
+
+    const { code } = await ffmpeg.output();
+
+    await Deno.remove(tempPath).catch(() => {});
+
+    if (code !== 0) {
+      await Deno.remove(outputPath).catch(() => {});
+      return c.json({ error: "Video compression failed." }, 500);
+    }
+
+    return c.json({ url: `/uploads/${id}.mp4` });
+  });
+
   app.get("/uploads/:filename", async (c) => {
     const filename = c.req.param("filename");
 
@@ -123,6 +188,7 @@ export const createApp = () => {
       png: "image/png",
       gif: "image/gif",
       webp: "image/webp",
+      mp4: "video/mp4",
     };
     const contentType = contentTypeMap[ext] ?? "application/octet-stream";
 
@@ -233,6 +299,7 @@ export const createApp = () => {
       title?: string | null;
       body?: string | null;
       imageUrl?: string;
+      videoUrl?: string;
     };
 
     const userId = getCookie(c, "userId") as string;
@@ -247,6 +314,7 @@ export const createApp = () => {
         title: body.title ?? null,
         body: body.body ?? null,
         imageUrl: body.imageUrl,
+        videoUrl: body.videoUrl,
       },
       userId,
       user.name,

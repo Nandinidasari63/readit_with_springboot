@@ -7,6 +7,7 @@ export type Post = {
   userId: string;
   likes: string[];
   imageUrl?: string;
+  videoUrl?: string;
 };
 
 export type FeedState = {

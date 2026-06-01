@@ -24,12 +24,14 @@ import {
   handleDeletePost,
   handleToggleLike,
 } from "../actions.tsx";
-import { uploadImageApi } from "../api.tsx";
+import { uploadImageApi, uploadVideoApi } from "../api.tsx";
 import { format } from "date-fns";
 import { useState, useRef } from "react";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const MAX_SIZE = 5 * 1024 * 1024;
+const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/quicktime", "video/x-msvideo", "video/webm"]);
+const MAX_VIDEO_SIZE = 500 * 1024 * 1024;
 
 const PostItem = ({
   data,
@@ -91,6 +93,20 @@ const PostItem = ({
                 maxHeight: 400,
                 borderRadius: 1,
                 objectFit: "contain",
+                display: "block",
+                marginBottom: 1,
+              }}
+            />
+          )}
+          {data.videoUrl && (
+            <Box
+              component="video"
+              src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${data.videoUrl}`}
+              controls
+              sx={{
+                maxWidth: "100%",
+                maxHeight: 400,
+                borderRadius: 1,
                 display: "block",
                 marginBottom: 1,
               }}
@@ -208,6 +224,10 @@ export const PostForm = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
+  const videoInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] ?? null;
@@ -231,6 +251,8 @@ export const PostForm = ({
       return;
     }
 
+    // selecting an image clears any selected video
+    clearVideo();
     setSelectedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
@@ -243,6 +265,42 @@ export const PostForm = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setVideoError(null);
+
+    if (!file) {
+      setSelectedVideo(null);
+      setVideoPreviewUrl(null);
+      return;
+    }
+
+    if (!ALLOWED_VIDEO_TYPES.has(file.type)) {
+      setVideoError("Unsupported format. Use MP4, MOV, AVI, or WEBM.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_VIDEO_SIZE) {
+      setVideoError("File exceeds 500 MB limit.");
+      e.target.value = "";
+      return;
+    }
+
+    // selecting a video clears any selected image
+    clearFile();
+    setSelectedVideo(file);
+    setVideoPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const clearVideo = () => {
+    setSelectedVideo(null);
+    if (videoPreviewUrl) URL.revokeObjectURL(videoPreviewUrl);
+    setVideoPreviewUrl(null);
+    setVideoError(null);
+    if (videoInputRef.current) videoInputRef.current.value = "";
+  };
+
   const submitPost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const form = e.currentTarget;
@@ -252,17 +310,22 @@ export const PostForm = ({
     const title = formData.get("title") as string;
     const body = formData.get("body") as string;
 
-    if (!title.trim() && !body.trim() && !selectedFile) {
-      alert("Please enter a title, body, or attach an image.");
+    if (!title.trim() && !body.trim() && !selectedFile && !selectedVideo) {
+      alert("Please enter a title, body, or attach an image or video.");
       setIsSubmitting(false);
       return;
     }
 
     try {
       let imageUrl: string | undefined;
+      let videoUrl: string | undefined;
+
       if (selectedFile) {
         const res = await uploadImageApi(selectedFile);
         imageUrl = res.url;
+      } else if (selectedVideo) {
+        const res = await uploadVideoApi(selectedVideo);
+        videoUrl = res.url;
       }
 
       const newPost = {
@@ -271,10 +334,12 @@ export const PostForm = ({
         name: user.name,
         time: format(new Date(), "MMMM d, yyyy h:mm a"),
         imageUrl,
+        videoUrl,
       };
       await handleAddPost(dispatch, newPost, user._id);
       form.reset();
       clearFile();
+      clearVideo();
     } catch (error) {
       console.error("Failed to create post:", error);
       alert(error instanceof Error ? error.message : "Failed to create post");
@@ -309,7 +374,7 @@ export const PostForm = ({
             disabled={isSubmitting}
           />
 
-          <Box>
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
             <Button
               variant="outlined"
               component="label"
@@ -325,15 +390,32 @@ export const PostForm = ({
                 onChange={handleFileChange}
               />
             </Button>
-            {fileError && (
-              <Typography variant="caption" color="error" sx={{ ml: 1 }}>
-                {fileError}
-              </Typography>
-            )}
+            <Button
+              variant="outlined"
+              component="label"
+              disabled={isSubmitting}
+              size="small"
+            >
+              Attach Video
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/mp4,video/quicktime,video/x-msvideo,video/webm"
+                hidden
+                onChange={handleVideoChange}
+              />
+            </Button>
           </Box>
 
+          {fileError && (
+            <Typography variant="caption" color="error">{fileError}</Typography>
+          )}
+          {videoError && (
+            <Typography variant="caption" color="error">{videoError}</Typography>
+          )}
+
           {previewUrl && (
-            <Box sx={{ position: "relative", display: "inline-block" }}>
+            <Box sx={{ display: "inline-block" }}>
               <Box
                 component="img"
                 src={previewUrl}
@@ -346,15 +428,38 @@ export const PostForm = ({
                   display: "block",
                 }}
               />
-              <Button
-                size="small"
-                color="error"
-                onClick={clearFile}
-                sx={{ mt: 0.5 }}
-              >
+              <Button size="small" color="error" onClick={clearFile} sx={{ mt: 0.5 }}>
                 Remove
               </Button>
             </Box>
+          )}
+
+          {videoPreviewUrl && (
+            <Box sx={{ display: "inline-block", width: "100%" }}>
+              <Box
+                component="video"
+                src={videoPreviewUrl}
+                controls
+                sx={{
+                  maxWidth: "100%",
+                  maxHeight: 300,
+                  borderRadius: 1,
+                  display: "block",
+                }}
+              />
+              <Typography variant="caption" color="textSecondary" sx={{ display: "block", mt: 0.5 }}>
+                {selectedVideo?.name} — will be compressed on upload
+              </Typography>
+              <Button size="small" color="error" onClick={clearVideo} sx={{ mt: 0.5 }}>
+                Remove
+              </Button>
+            </Box>
+          )}
+
+          {isSubmitting && selectedVideo && (
+            <Typography variant="body2" color="textSecondary">
+              Processing video, please wait...
+            </Typography>
           )}
 
           <Button

@@ -25,6 +25,7 @@ export type Post = {
   userId: string;
   name: string;
   imageUrl?: string;
+  videoUrl?: string;
 };
 export const postsCollection = db.collection<OptionalId<Post>>("posts");
 

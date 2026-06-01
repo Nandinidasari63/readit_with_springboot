@@ -49,12 +49,31 @@ export const uploadImageApi = async (file: File): Promise<{ url: string }> => {
   return res.json();
 };
 
+export const uploadVideoApi = async (file: File): Promise<{ url: string }> => {
+  const form = new FormData();
+  form.append("video", file);
+
+  const res = await fetch(`${BASE_URL}/upload-video`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? `Upload failed: ${res.status}`);
+  }
+
+  return res.json();
+};
+
 export const addPostApi = async (post: {
   title: string | null;
   body: string | null;
   time: string;
   name: string;
   imageUrl?: string;
+  videoUrl?: string;
 }) => {
   return await request("/add", {
     method: "POST",
