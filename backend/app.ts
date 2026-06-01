@@ -21,9 +21,9 @@ type Feed = {
   posts: post[];
 };
 
-const UPLOADS_DIR = "./uploads";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 const MAX_VIDEO_SIZE = 500 * 1024 * 1024; // 500 MB
+const MAX_VIDEO_DURATION = 300; // 5 minutes in seconds
 const ALLOWED_MIME_TYPES = new Set([
   "image/jpeg",
   "image/png",
@@ -32,18 +32,57 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 const ALLOWED_VIDEO_MIME_TYPES = new Set([
   "video/mp4",
-  "video/quicktime",  // MOV
-  "video/x-msvideo", // AVI
+  "video/quicktime",
+  "video/x-msvideo",
   "video/webm",
 ]);
-const MIME_TO_EXT: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/gif": "gif",
-  "image/webp": "webp",
-};
 
-await Deno.mkdir(UPLOADS_DIR, { recursive: true });
+const CLOUDINARY_CLOUD_NAME = Deno.env.get("CLOUDINARY_CLOUD_NAME")!;
+const CLOUDINARY_API_KEY = Deno.env.get("CLOUDINARY_API_KEY")!;
+const CLOUDINARY_API_SECRET = Deno.env.get("CLOUDINARY_API_SECRET")!;
+
+async function cloudinaryUpload(
+  file: File,
+  resourceType: "image" | "video",
+): Promise<{ secure_url: string; duration?: number }> {
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+
+  const paramsToSign = `timestamp=${timestamp}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(CLOUDINARY_API_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBuffer = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    encoder.encode(paramsToSign),
+  );
+  const signature = Array.from(new Uint8Array(sigBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", CLOUDINARY_API_KEY);
+  form.append("timestamp", timestamp);
+  form.append("signature", signature);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`,
+    { method: "POST", body: form },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudinary upload failed: ${text}`);
+  }
+
+  return res.json() as Promise<{ secure_url: string; duration?: number }>;
+}
 
 export const createApp = () => {
   const userService = new UserService();
@@ -75,9 +114,7 @@ export const createApp = () => {
   );
   app.post("/upload", async (c) => {
     const userId = getCookie(c, "userId");
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     const formData = await c.req.formData();
     const file = formData.get("image");
@@ -87,31 +124,25 @@ export const createApp = () => {
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      return c.json(
-        { error: "Unsupported file type. Use JPG, PNG, GIF, or WEBP." },
-        400,
-      );
+      return c.json({ error: "Unsupported file type. Use JPG, PNG, GIF, or WEBP." }, 400);
     }
 
     if (file.size > MAX_FILE_SIZE) {
       return c.json({ error: "File exceeds 5 MB limit." }, 400);
     }
 
-    const ext = MIME_TO_EXT[file.type];
-    const filename = `${crypto.randomUUID()}.${ext}`;
-    const filepath = `${UPLOADS_DIR}/${filename}`;
-
-    const buffer = await file.arrayBuffer();
-    await Deno.writeFile(filepath, new Uint8Array(buffer));
-
-    return c.json({ url: `/uploads/${filename}` });
+    try {
+      const result = await cloudinaryUpload(file, "image");
+      return c.json({ url: result.secure_url });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      return c.json({ error: message }, 500);
+    }
   });
 
   app.post("/upload-video", async (c) => {
     const userId = getCookie(c, "userId");
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
 
     const formData = await c.req.formData();
     const file = formData.get("video");
@@ -121,80 +152,25 @@ export const createApp = () => {
     }
 
     if (!ALLOWED_VIDEO_MIME_TYPES.has(file.type)) {
-      return c.json(
-        { error: "Unsupported format. Use MP4, MOV, AVI, or WEBM." },
-        400,
-      );
+      return c.json({ error: "Unsupported format. Use MP4, MOV, AVI, or WEBM." }, 400);
     }
 
     if (file.size > MAX_VIDEO_SIZE) {
       return c.json({ error: "File exceeds 500 MB limit." }, 400);
     }
 
-    const id = crypto.randomUUID();
-    const tempPath = `${UPLOADS_DIR}/tmp_${id}`;
-    const outputPath = `${UPLOADS_DIR}/${id}.mp4`;
-
-    const buffer = await file.arrayBuffer();
-    await Deno.writeFile(tempPath, new Uint8Array(buffer));
-
-    const ffmpeg = new Deno.Command("ffmpeg", {
-      args: [
-        "-i", tempPath,
-        "-c:v", "libx264",
-        "-crf", "23",
-        "-preset", "fast",
-        "-c:a", "aac",
-        "-movflags", "+faststart",
-        "-y",
-        outputPath,
-      ],
-      stdout: "null",
-      stderr: "null",
-    });
-
-    const { code } = await ffmpeg.output();
-
-    await Deno.remove(tempPath).catch(() => {});
-
-    if (code !== 0) {
-      await Deno.remove(outputPath).catch(() => {});
-      return c.json({ error: "Video compression failed." }, 500);
-    }
-
-    return c.json({ url: `/uploads/${id}.mp4` });
-  });
-
-  app.get("/uploads/:filename", async (c) => {
-    const filename = c.req.param("filename");
-
-    // prevent path traversal
-    if (filename.includes("/") || filename.includes("..")) {
-      return c.text("Not found", 404);
-    }
-
-    const filepath = `${UPLOADS_DIR}/${filename}`;
-
-    let data: Uint8Array;
     try {
-      data = await Deno.readFile(filepath);
-    } catch {
-      return c.text("Not found", 404);
+      const result = await cloudinaryUpload(file, "video");
+
+      if (result.duration !== undefined && result.duration > MAX_VIDEO_DURATION) {
+        return c.json({ error: "Video exceeds 5-minute limit." }, 400);
+      }
+
+      return c.json({ url: result.secure_url });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      return c.json({ error: message }, 500);
     }
-
-    const ext = filename.split(".").pop() ?? "";
-    const contentTypeMap: Record<string, string> = {
-      jpg: "image/jpeg",
-      png: "image/png",
-      gif: "image/gif",
-      webp: "image/webp",
-      mp4: "video/mp4",
-    };
-    const contentType = contentTypeMap[ext] ?? "application/octet-stream";
-
-    return new Response(data, {
-      headers: { "Content-Type": contentType },
-    });
   });
 
   app.get("/auth/github/login", (c) => {

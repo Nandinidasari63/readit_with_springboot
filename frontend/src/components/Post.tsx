@@ -86,7 +86,7 @@ const PostItem = ({
           {data.imageUrl && (
             <Box
               component="img"
-              src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${data.imageUrl}`}
+              src={data.imageUrl}
               alt="post image"
               sx={{
                 maxWidth: "100%",
@@ -101,7 +101,7 @@ const PostItem = ({
           {data.videoUrl && (
             <Box
               component="video"
-              src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${data.videoUrl}`}
+              src={data.videoUrl}
               controls
               sx={{
                 maxWidth: "100%",
@@ -287,10 +287,22 @@ export const PostForm = ({
       return;
     }
 
-    // selecting a video clears any selected image
-    clearFile();
-    setSelectedVideo(file);
-    setVideoPreviewUrl(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    const videoEl = document.createElement("video");
+    videoEl.preload = "metadata";
+    videoEl.src = objectUrl;
+    videoEl.onloadedmetadata = () => {
+      if (videoEl.duration > 300) {
+        setVideoError("Video exceeds 5-minute limit.");
+        URL.revokeObjectURL(objectUrl);
+        if (videoInputRef.current) videoInputRef.current.value = "";
+        return;
+      }
+      // selecting a video clears any selected image
+      clearFile();
+      setSelectedVideo(file);
+      setVideoPreviewUrl(objectUrl);
+    };
   };
 
   const clearVideo = () => {
