@@ -245,9 +245,10 @@ export const PostForm = ({
 
   const submitPost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const form = e.currentTarget;
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     const title = formData.get("title") as string;
     const body = formData.get("body") as string;
 
@@ -272,7 +273,7 @@ export const PostForm = ({
         imageUrl,
       };
       await handleAddPost(dispatch, newPost, user._id);
-      e.currentTarget.reset();
+      form.reset();
       clearFile();
     } catch (error) {
       console.error("Failed to create post:", error);
