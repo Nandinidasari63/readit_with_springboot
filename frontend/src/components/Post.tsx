@@ -24,8 +24,12 @@ import {
   handleDeletePost,
   handleToggleLike,
 } from "../actions.tsx";
+import { uploadImageApi } from "../api.tsx";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useRef } from "react";
+
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
+const MAX_SIZE = 5 * 1024 * 1024;
 
 const PostItem = ({
   data,
@@ -77,6 +81,21 @@ const PostItem = ({
           >
             {data.body}
           </Typography>
+          {data.imageUrl && (
+            <Box
+              component="img"
+              src={`${import.meta.env.VITE_API_URL || "http://localhost:8000"}${data.imageUrl}`}
+              alt="post image"
+              sx={{
+                maxWidth: "100%",
+                maxHeight: 400,
+                borderRadius: 1,
+                objectFit: "contain",
+                display: "block",
+                marginBottom: 1,
+              }}
+            />
+          )}
         </CardContent>
 
         <CardActions>
@@ -185,6 +204,44 @@ export const PostForm = ({
   user: FeedState;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+
+    if (!file) {
+      setSelectedFile(null);
+      setPreviewUrl(null);
+      return;
+    }
+
+    if (!ALLOWED_TYPES.has(file.type)) {
+      setFileError("Unsupported format. Use JPG, PNG, GIF, or WEBP.");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      setFileError("File exceeds 5 MB limit.");
+      e.target.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl(null);
+    setFileError(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const submitPost = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -194,24 +251,32 @@ export const PostForm = ({
     const title = formData.get("title") as string;
     const body = formData.get("body") as string;
 
-    if (!title.trim() && !body.trim()) {
-      alert("Please enter a title or body for your post");
+    if (!title.trim() && !body.trim() && !selectedFile) {
+      alert("Please enter a title, body, or attach an image.");
       setIsSubmitting(false);
       return;
     }
 
     try {
+      let imageUrl: string | undefined;
+      if (selectedFile) {
+        const res = await uploadImageApi(selectedFile);
+        imageUrl = res.url;
+      }
+
       const newPost = {
         title: title || null,
         body: body || null,
         name: user.name,
         time: format(new Date(), "MMMM d, yyyy h:mm a"),
+        imageUrl,
       };
       await handleAddPost(dispatch, newPost, user._id);
       e.currentTarget.reset();
+      clearFile();
     } catch (error) {
       console.error("Failed to create post:", error);
-      alert("Failed to create post");
+      alert(error instanceof Error ? error.message : "Failed to create post");
     } finally {
       setIsSubmitting(false);
     }
@@ -242,6 +307,55 @@ export const PostForm = ({
             rows={4}
             disabled={isSubmitting}
           />
+
+          <Box>
+            <Button
+              variant="outlined"
+              component="label"
+              disabled={isSubmitting}
+              size="small"
+            >
+              Attach Image
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                hidden
+                onChange={handleFileChange}
+              />
+            </Button>
+            {fileError && (
+              <Typography variant="caption" color="error" sx={{ ml: 1 }}>
+                {fileError}
+              </Typography>
+            )}
+          </Box>
+
+          {previewUrl && (
+            <Box sx={{ position: "relative", display: "inline-block" }}>
+              <Box
+                component="img"
+                src={previewUrl}
+                alt="preview"
+                sx={{
+                  maxWidth: "100%",
+                  maxHeight: 300,
+                  borderRadius: 1,
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+              <Button
+                size="small"
+                color="error"
+                onClick={clearFile}
+                sx={{ mt: 0.5 }}
+              >
+                Remove
+              </Button>
+            </Box>
+          )}
+
           <Button
             type="submit"
             variant="contained"

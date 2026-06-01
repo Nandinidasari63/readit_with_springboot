@@ -17,6 +17,7 @@ export const handleAddPost = async (
     body: string | null;
     time: string;
     name: string;
+    imageUrl?: string;
   },
   currentUserId: string,
 ) => {

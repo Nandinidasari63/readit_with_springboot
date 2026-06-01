@@ -21,6 +21,23 @@ type Feed = {
   posts: post[];
 };
 
+const UPLOADS_DIR = "./uploads";
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const ALLOWED_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+await Deno.mkdir(UPLOADS_DIR, { recursive: true });
+
 export const createApp = () => {
   const userService = new UserService();
   const postService = new PostService();
@@ -49,6 +66,71 @@ export const createApp = () => {
       credentials: true,
     }),
   );
+  app.post("/upload", async (c) => {
+    const userId = getCookie(c, "userId");
+    if (!userId) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+
+    const formData = await c.req.formData();
+    const file = formData.get("image");
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: "No image file provided" }, 400);
+    }
+
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return c.json(
+        { error: "Unsupported file type. Use JPG, PNG, GIF, or WEBP." },
+        400,
+      );
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      return c.json({ error: "File exceeds 5 MB limit." }, 400);
+    }
+
+    const ext = MIME_TO_EXT[file.type];
+    const filename = `${crypto.randomUUID()}.${ext}`;
+    const filepath = `${UPLOADS_DIR}/${filename}`;
+
+    const buffer = await file.arrayBuffer();
+    await Deno.writeFile(filepath, new Uint8Array(buffer));
+
+    return c.json({ url: `/uploads/${filename}` });
+  });
+
+  app.get("/uploads/:filename", async (c) => {
+    const filename = c.req.param("filename");
+
+    // prevent path traversal
+    if (filename.includes("/") || filename.includes("..")) {
+      return c.text("Not found", 404);
+    }
+
+    const filepath = `${UPLOADS_DIR}/${filename}`;
+
+    let data: Uint8Array;
+    try {
+      data = await Deno.readFile(filepath);
+    } catch {
+      return c.text("Not found", 404);
+    }
+
+    const ext = filename.split(".").pop() ?? "";
+    const contentTypeMap: Record<string, string> = {
+      jpg: "image/jpeg",
+      png: "image/png",
+      gif: "image/gif",
+      webp: "image/webp",
+    };
+    const contentType = contentTypeMap[ext] ?? "application/octet-stream";
+
+    return new Response(data, {
+      headers: { "Content-Type": contentType },
+    });
+  });
+
   app.get("/auth/github/login", (c) => {
     const params = new URLSearchParams({
       client_id: GITHUB_CLIENT_ID,
@@ -147,7 +229,11 @@ export const createApp = () => {
   });
 
   app.post("/add", async (c) => {
-    const body = await c.req.json();
+    const body = await c.req.json() as {
+      title?: string | null;
+      body?: string | null;
+      imageUrl?: string;
+    };
 
     const userId = getCookie(c, "userId") as string;
 
@@ -157,7 +243,11 @@ export const createApp = () => {
     }
 
     const insertedId = await postService.addPost(
-      body,
+      {
+        title: body.title ?? null,
+        body: body.body ?? null,
+        imageUrl: body.imageUrl,
+      },
       userId,
       user.name,
     );

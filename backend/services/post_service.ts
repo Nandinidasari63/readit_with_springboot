@@ -17,11 +17,11 @@ export class PostService {
   }
 
   async addPost(
-    data: { title: string | null; body: string | null },
+    data: { title: string | null; body: string | null; imageUrl?: string },
     userId: string,
     name: string,
   ) {
-    if (!data.title && !data.body) {
+    if (!data.title && !data.body && !data.imageUrl) {
       throw new Error("Post cannot be empty");
     }
 
