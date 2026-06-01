@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: readit-backend
+    runtime: deno
+    plan: free
+    buildCommand: |
+      echo "Backend build completed"
+    startCommand: deno run --allow-net --allow-env main.ts
+    envVars:
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: GITHUB_REDIRECT_URI
+        value: https://readit-backend.onrender.com/auth/github/callback
+      - key: MONGODB_URI
+        sync: false
+      - key: FRONTEND_URL
+        value: https://readit-frontend.onrender.com
+
+  - type: web
+    name: readit-frontend
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm run preview
+    staticSite: true
+    buildDir: dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://readit-backend.onrender.com
+
+databases:
+  - name: readit-db
+    databaseName: readit
+    plan: free

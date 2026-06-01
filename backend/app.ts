@@ -1,12 +1,13 @@
 import { cors } from "hono/cors";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
-import { getCookie, setCookie } from "hono/cookie";
+import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { FeedService } from "./services/feed_service.ts";
 import { UserService } from "./services/user_service.ts";
 import { PostService } from "./services/post_service.ts";
 import { LikeService } from "./services/like_service.ts";
 import { SubscriptionService } from "./services/subscription_service.ts";
+import { AuthService } from "./services/auth_service.ts";
 
 type post = {
   id: number;
@@ -25,6 +26,7 @@ export const createApp = () => {
   const postService = new PostService();
   const likeService = new LikeService();
   const subscriptionService = new SubscriptionService();
+  const authService = new AuthService();
   const app = new Hono();
 
   const feedService = new FeedService(
@@ -36,13 +38,14 @@ export const createApp = () => {
   const GITHUB_CLIENT_ID = Deno.env.get("GITHUB_CLIENT_ID")!;
   const GITHUB_REDIRECT_URI = Deno.env.get("GITHUB_REDIRECT_URI")!;
   const GITHUB_CLIENT_SECRET = Deno.env.get("GITHUB_CLIENT_SECRET")!;
+  const FRONTEND_URL = Deno.env.get("FRONTEND_URL") || "http://localhost:5173";
 
   app.use(logger());
 
   app.use(
     "/*",
     cors({
-      origin: "http://localhost:5173",
+      origin: FRONTEND_URL,
       credentials: true,
     }),
   );
@@ -127,7 +130,7 @@ export const createApp = () => {
     setCookie(c, "userId", user._id.toString());
     setCookie(c, "username", user.name);
 
-    return c.redirect("http://localhost:5173/");
+    return c.redirect(`${FRONTEND_URL}/`);
   });
 
   app.get("/posts", async (c) => {
@@ -198,6 +201,85 @@ export const createApp = () => {
 
     await likeService.unlike(userId!, postId);
     return c.json({ message: "unliked" });
+  });
+
+  app.post("/signup", async (c) => {
+    try {
+      const body = await c.req.json() as {
+        username?: string;
+        password?: string;
+      };
+
+      if (!body.username || !body.password) {
+        return c.json(
+          { error: "Username and password are required" },
+          400,
+        );
+      }
+
+      const user = await authService.createUser(body.username, body.password);
+      setCookie(c, "userId", user._id);
+      setCookie(c, "username", user.name);
+
+      return c.json({ user, message: "User created and logged in" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  app.post("/login", async (c) => {
+    try {
+      const body = await c.req.json() as {
+        username?: string;
+        password?: string;
+      };
+
+      if (!body.username || !body.password) {
+        return c.json(
+          { error: "Username and password are required" },
+          400,
+        );
+      }
+
+      const user = await authService.authenticateUser(
+        body.username,
+        body.password,
+      );
+      setCookie(c, "userId", user._id);
+      setCookie(c, "username", user.name);
+
+      return c.json({ user, message: "Logged in successfully" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return c.json({ error: message }, 401);
+    }
+  });
+
+  app.post("/logout", (c) => {
+    deleteCookie(c, "userId");
+    deleteCookie(c, "username");
+    return c.json({ message: "Logged out successfully" });
+  });
+
+  app.get("/me", async (c) => {
+    const userId = getCookie(c, "userId");
+
+    if (!userId) {
+      return c.json({ data: null });
+    }
+
+    const user = await userService.getUser(userId);
+    if (!user) {
+      return c.json({ data: null });
+    }
+
+    return c.json({
+      data: {
+        _id: user._id.toString(),
+        name: user.name,
+      },
+    });
   });
 
   return app;

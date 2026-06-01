@@ -1,90 +1,122 @@
 import { handleToggleSubscribe } from "../actions.tsx";
-import { TextField } from "@mui/material";
-import Box from "@mui/material/Box";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  Paper,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { useState } from "react";
 import { Actions } from "../reducer.tsx";
 
-const SearchBar = ({ onSearch, text }) => {
+const SearchBar = (
+  { onSearch, text, isLoading }: {
+    onSearch: (text: string) => void;
+    text: string;
+    isLoading: boolean;
+  },
+) => {
   return (
-    <>
-      <h3>Search users</h3>
-      {
-        <Box sx={{ width: 500, maxWidth: "100%" }}>
-          <TextField
-            fullWidth
-            label="fullWidth"
-            id="fullWidth"
-            name="title"
-            value={text}
-            onChange={(e) => onSearch(e.target.value)}
-          />
-        </Box>
-      }
-      <button type="button">Search</button>
-    </>
+    <Box sx={{ marginBottom: 3 }}>
+      <Typography variant="h6" sx={{ marginBottom: 2 }}>
+        🔍 Search Users
+      </Typography>
+      <Box sx={{ display: "flex", gap: 2 }}>
+        <TextField
+          fullWidth
+          label="Search for users..."
+          value={text}
+          onChange={(e) => onSearch(e.target.value)}
+          placeholder="Enter username"
+          disabled={isLoading}
+          size="small"
+        />
+      </Box>
+    </Box>
   );
 };
 
 const Users = (
-  { users, searchedTerm, currentUser, dispatch },
+  { users, searchedTerm, currentUser, dispatch, isLoading }: any,
 ) => {
-  if (searchedTerm === "") return null;
+  if (searchedTerm.trim() === "") return null;
 
   const filtered = users.filter(
-    (user) =>
-      user.name.includes(searchedTerm) &&
-      user._id !== currentUser._id, // remove logged in data
+    (user: any) =>
+      user.name.toLowerCase().includes(searchedTerm.toLowerCase()) &&
+      user._id !== currentUser._id,
   );
 
+  if (filtered.length === 0) {
+    return (
+      <Paper sx={{ padding: 2, marginBottom: 2 }}>
+        <Typography color="textSecondary">
+          No users found matching "{searchedTerm}"
+        </Typography>
+      </Paper>
+    );
+  }
+
   return (
-    <>
-      {filtered.map((user) => {
-        const isSubscribed = currentUser.subscriptions?.includes(user._id) ??
-          false;
+    <Paper sx={{ marginBottom: 2 }}>
+      <List>
+        {filtered.map((user: any, index: number) => {
+          const isSubscribed = currentUser.subscriptions?.includes(user._id) ??
+            false;
 
-        return (
-          <div
-            key={user._id}
-            style={{
-              border: "1px solid black",
-              padding: "10px",
-              margin: "10px",
-            }}
-          >
-            <p>{user.name}</p>
-
-            {
-              <button
-                type="button"
-                onClick={() =>
-                  handleToggleSubscribe(
-                    dispatch,
-                    user._id,
-                    isSubscribed,
-                  )}
+          return (
+            <Box key={user._id}>
+              <ListItem
+                secondaryAction={
+                  <Button
+                    variant={isSubscribed ? "contained" : "outlined"}
+                    color={isSubscribed ? "error" : "primary"}
+                    onClick={() =>
+                      handleToggleSubscribe(
+                        dispatch,
+                        user._id,
+                        isSubscribed,
+                      )}
+                    disabled={isLoading}
+                    size="small"
+                  >
+                    {isSubscribed ? "Unsubscribe" : "Subscribe"}
+                  </Button>
+                }
               >
-                {isSubscribed ? "Unsubscribe" : "Subscribe"}
-              </button>
-            }
-          </div>
-        );
-      })}
-    </>
+                <ListItemText
+                  primary={user.name}
+                  secondary={`${user.posts?.length || 0} posts`}
+                />
+              </ListItem>
+              {index < filtered.length - 1 && <Divider />}
+            </Box>
+          );
+        })}
+      </List>
+    </Paper>
   );
 };
 
-export const UsersList = ({ users, currentUser, dispatch }) => {
+export const UsersList = ({ users, currentUser, dispatch }: any) => {
   const [text, setText] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   return (
-    <>
-      <SearchBar onSearch={setText} text={text} />
+    <Box sx={{ marginBottom: 3 }}>
+      <SearchBar onSearch={setText} text={text} isLoading={isLoading} />
       <Users
         users={users}
         searchedTerm={text}
         currentUser={currentUser}
         dispatch={dispatch}
+        isLoading={isLoading}
       />
-    </>
+    </Box>
   );
 };

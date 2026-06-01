@@ -1,6 +1,7 @@
 import { MongoClient, ObjectId, OptionalId } from "mongodb";
 
-const client = new MongoClient("mongodb://127.0.0.1:27017");
+const mongoUri = Deno.env.get("MONGODB_URI") || "mongodb://127.0.0.1:27017";
+const client = new MongoClient(mongoUri);
 
 await client.connect();
 
@@ -9,7 +10,9 @@ const db = client.db("readit");
 export type User = {
   _id: ObjectId;
   name: string;
-  githubId: number;
+  githubId?: number;
+  passwordHash?: string;
+  createdAt?: Date;
 };
 
 export const usersCollection = db.collection<OptionalId<User>>("users");
@@ -40,10 +43,10 @@ export type Like = {
   postId: string; // postid in string
 };
 
+export const likesCollection = db.collection<OptionalId<Like>>("likes");
+
 // usersCollection.insertMany([
 //   { name: "alice", githubId: 111 },
 //   { name: "bob", githubId: 222 },
 //   { name: "charlie", githubId: 333 },
 // ]);
-
-export const likesCollection = db.collection<OptionalId<Like>>("likes");

@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8080";
+const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
 const request = async (url: string, options: RequestInit = {}) => {
   const res = await fetch(`${BASE_URL}${url}`, {
@@ -26,6 +26,7 @@ export const addUserApi = async (name: string, password: string) => {
     body: JSON.stringify({ name, password }),
   });
 };
+
 export const fetchPosts = async () => {
   return await request("/posts");
 };
@@ -48,6 +49,7 @@ export const deletePostApi = async (id: string, userId: string) => {
     body: JSON.stringify({ id, userId }),
   });
 };
+
 export const subscribeApi = async (targetUserId: string) => {
   return await request("/subscribe", {
     method: "POST",
@@ -61,6 +63,7 @@ export const unsubscribeApi = async (targetUserId: string) => {
     body: JSON.stringify({ targetUserId }),
   });
 };
+
 export const likeApi = async (postId: string) => {
   return await request("/like", {
     method: "POST",
@@ -72,5 +75,11 @@ export const unlikeApi = async (postId: string) => {
   return await request("/unlike", {
     method: "POST",
     body: JSON.stringify({ postId }),
+  });
+};
+
+export const logoutApi = async () => {
+  return await request("/logout", {
+    method: "POST",
   });
 };
