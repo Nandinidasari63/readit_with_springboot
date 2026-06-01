@@ -47,21 +47,14 @@ async function cloudinaryUpload(
 ): Promise<{ secure_url: string; duration?: number }> {
   const timestamp = Math.floor(Date.now() / 1000).toString();
 
-  const paramsToSign = `timestamp=${timestamp}`;
+  // Cloudinary signature: SHA-1("timestamp=<ts><api_secret>")
+  const stringToSign = `timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
   const encoder = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    encoder.encode(CLOUDINARY_API_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-1",
+    encoder.encode(stringToSign),
   );
-  const sigBuffer = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(paramsToSign),
-  );
-  const signature = Array.from(new Uint8Array(sigBuffer))
+  const signature = Array.from(new Uint8Array(hashBuffer))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
 
