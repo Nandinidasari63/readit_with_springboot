@@ -121,3 +121,32 @@ export const logoutApi = async () => {
     method: "POST",
   });
 };
+
+export const setPresetAvatarApi = async (
+  avatarUrl: string,
+): Promise<{ avatarUrl: string }> => {
+  return await request("/avatar/preset", {
+    method: "POST",
+    body: JSON.stringify({ avatarUrl }),
+  });
+};
+
+export const uploadAvatarApi = async (
+  file: File,
+): Promise<{ avatarUrl: string }> => {
+  const form = new FormData();
+  form.append("avatar", file);
+
+  const res = await fetch(`${BASE_URL}/avatar/upload`, {
+    method: "POST",
+    credentials: "include",
+    body: form,
+  });
+
+  if (!res.ok) {
+    const json = await res.json().catch(() => ({}));
+    throw new Error(json.error ?? `Upload failed: ${res.status}`);
+  }
+
+  return res.json();
+};

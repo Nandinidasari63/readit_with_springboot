@@ -27,11 +27,23 @@ export class FeedService {
 
     const postsWithLikes = await this.likeService.attachLikes(posts);
 
+    const uniqueAuthorIds = [...new Set(posts.map((p) => p.userId))];
+    const authors = await this.userService.getUsersByIds(uniqueAuthorIds);
+    const avatarMap = new Map(
+      authors.map((a) => [a._id.toString(), a.avatarUrl]),
+    );
+
+    const postsWithAvatars = postsWithLikes.map((p) => ({
+      ...p,
+      avatarUrl: avatarMap.get(p.userId),
+    }));
+
     return {
       _id: userId,
       name: user.name,
+      avatarUrl: user.avatarUrl,
       subscriptions,
-      posts: postsWithLikes,
+      posts: postsWithAvatars,
     };
   }
 }

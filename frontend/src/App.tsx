@@ -7,11 +7,14 @@ import AppBar from "@mui/material/AppBar";
 import Toolbar from "@mui/material/Toolbar";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
+import Avatar from "@mui/material/Avatar";
+import IconButton from "@mui/material/IconButton";
 
 import { useEffect, useReducer, useState } from "react";
 import { fetchPosts, fetchUsers } from "./api.tsx";
 import { FeedList, PostForm } from "./components/Post.tsx";
 import { UsersList } from "./components/Users.tsx";
+import { AvatarPicker } from "./components/AvatarPicker.tsx";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
@@ -24,6 +27,7 @@ export const App = () => {
     subscriptions: [],
   });
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -69,6 +73,11 @@ export const App = () => {
           </Typography>
           {state.name && (
             <>
+              <IconButton onClick={() => setAvatarPickerOpen(true)} sx={{ p: 0, mr: 1 }}>
+                <Avatar src={state.avatarUrl} sx={{ width: 32, height: 32 }}>
+                  {!state.avatarUrl && state.name.charAt(0).toUpperCase()}
+                </Avatar>
+              </IconButton>
               <Typography sx={{ marginRight: 2 }}>
                 Hello, {state.name}!
               </Typography>
@@ -90,6 +99,11 @@ export const App = () => {
           <FeedList dispatch={dispatch} data={state} />
         </Box>
       </Container>
+      <AvatarPicker
+        open={avatarPickerOpen}
+        onClose={() => setAvatarPickerOpen(false)}
+        dispatch={dispatch}
+      />
     </>
   );
 };

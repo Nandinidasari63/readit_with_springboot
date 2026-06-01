@@ -8,6 +8,7 @@ export type Post = {
   likes: string[];
   imageUrl?: string;
   videoUrl?: string;
+  avatarUrl?: string;
 };
 
 export type FeedState = {
@@ -15,6 +16,7 @@ export type FeedState = {
   name: string;
   posts: Post[];
   subscriptions: string[];
+  avatarUrl?: string;
 };
 
 export enum Actions {
@@ -23,6 +25,7 @@ export enum Actions {
   SET_INITIAL,
   LIKE,
   TOGGLE_SUBSCRIPTION,
+  SET_AVATAR,
 }
 
 export type Action =
@@ -30,7 +33,8 @@ export type Action =
   | { type: Actions.DELETE; payload: string }
   | { type: Actions.SET_INITIAL; payload: FeedState }
   | { type: Actions.LIKE; payload: string }
-  | { type: Actions.TOGGLE_SUBSCRIPTION; payload: string };
+  | { type: Actions.TOGGLE_SUBSCRIPTION; payload: string }
+  | { type: Actions.SET_AVATAR; payload: string };
 
 export const reducer = (state: FeedState, action: Action): FeedState => {
   switch (action.type) {
@@ -72,6 +76,9 @@ export const reducer = (state: FeedState, action: Action): FeedState => {
           ? state.subscriptions.filter((id) => id !== action.payload)
           : [...state.subscriptions, action.payload],
       };
+
+    case Actions.SET_AVATAR:
+      return { ...state, avatarUrl: action.payload };
 
     default:
       return state;

@@ -77,6 +77,52 @@ async function cloudinaryUpload(
   return res.json() as Promise<{ secure_url: string; duration?: number }>;
 }
 
+const AVATAR_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_AVATAR_SIZE = 2 * 1024 * 1024; // 2 MB
+const DICEBEAR_HOST = "api.dicebear.com";
+
+async function cloudinaryAvatarUpload(
+  file: File,
+): Promise<string> {
+  const eager = "c_fill,g_face,h_200,w_200";
+  const timestamp = Math.floor(Date.now() / 1000).toString();
+
+  // params must be sorted alphabetically: eager < timestamp
+  const stringToSign = `eager=${eager}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`;
+  const encoder = new TextEncoder();
+  const hashBuffer = await crypto.subtle.digest(
+    "SHA-1",
+    encoder.encode(stringToSign),
+  );
+  const signature = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("api_key", CLOUDINARY_API_KEY);
+  form.append("timestamp", timestamp);
+  form.append("eager", eager);
+  form.append("signature", signature);
+
+  const res = await fetch(
+    `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+    { method: "POST", body: form },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Cloudinary upload failed: ${text}`);
+  }
+
+  const json = await res.json() as {
+    eager?: Array<{ secure_url: string }>;
+    secure_url: string;
+  };
+
+  return json.eager?.[0]?.secure_url ?? json.secure_url;
+}
+
 export const createApp = () => {
   const userService = new UserService();
   const postService = new PostService();
@@ -389,6 +435,58 @@ export const createApp = () => {
     return c.json({ message: "Logged out successfully" });
   });
 
+  app.post("/avatar/preset", async (c) => {
+    const userId = getCookie(c, "userId");
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+    const { avatarUrl } = await c.req.json() as { avatarUrl?: string };
+
+    if (!avatarUrl) {
+      return c.json({ error: "avatarUrl is required" }, 400);
+    }
+
+    try {
+      const parsed = new URL(avatarUrl);
+      if (parsed.hostname !== DICEBEAR_HOST) {
+        return c.json({ error: "Invalid preset avatar URL" }, 400);
+      }
+    } catch {
+      return c.json({ error: "Invalid URL" }, 400);
+    }
+
+    await userService.updateAvatar(userId, avatarUrl);
+    return c.json({ avatarUrl });
+  });
+
+  app.post("/avatar/upload", async (c) => {
+    const userId = getCookie(c, "userId");
+    if (!userId) return c.json({ error: "Unauthorized" }, 401);
+
+    const formData = await c.req.formData();
+    const file = formData.get("avatar");
+
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: "No image file provided" }, 400);
+    }
+
+    if (!AVATAR_MIME_TYPES.has(file.type)) {
+      return c.json({ error: "Unsupported format. Use JPG, PNG, or WEBP." }, 400);
+    }
+
+    if (file.size > MAX_AVATAR_SIZE) {
+      return c.json({ error: "File exceeds 2 MB limit." }, 400);
+    }
+
+    try {
+      const avatarUrl = await cloudinaryAvatarUpload(file);
+      await userService.updateAvatar(userId, avatarUrl);
+      return c.json({ avatarUrl });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Upload failed";
+      return c.json({ error: message }, 500);
+    }
+  });
+
   app.get("/me", async (c) => {
     const userId = getCookie(c, "userId");
 
@@ -405,6 +503,7 @@ export const createApp = () => {
       data: {
         _id: user._id.toString(),
         name: user.name,
+        avatarUrl: user.avatarUrl,
       },
     });
   });

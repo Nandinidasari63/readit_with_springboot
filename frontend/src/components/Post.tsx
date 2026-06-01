@@ -37,6 +37,7 @@ const PostItem = ({
   data,
   ondelete,
   name,
+  avatarUrl,
   currentUserId,
   postOwnerId,
   onLike,
@@ -59,8 +60,8 @@ const PostItem = ({
       <Card sx={{ marginBottom: 2 }}>
         <CardContent>
           <Box sx={{ display: "flex", alignItems: "center", marginBottom: 2 }}>
-            <Avatar sx={{ marginRight: 2 }}>
-              {name.charAt(0).toUpperCase()}
+            <Avatar src={avatarUrl} sx={{ marginRight: 2 }}>
+              {!avatarUrl && name.charAt(0).toUpperCase()}
             </Avatar>
             <Box sx={{ flex: 1 }}>
               <Typography variant="subtitle1" fontWeight="bold">
@@ -198,6 +199,7 @@ export const FeedList = ({ data, dispatch }: any) => {
             key={postId}
             data={post}
             name={post.name}
+            avatarUrl={post.avatarUrl}
             currentUserId={data._id}
             postOwnerId={post.userId}
             isLike={isLike}

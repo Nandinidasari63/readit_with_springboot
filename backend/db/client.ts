@@ -13,6 +13,7 @@ export type User = {
   githubId?: number;
   passwordHash?: string;
   createdAt?: Date;
+  avatarUrl?: string;
 };
 
 export const usersCollection = db.collection<OptionalId<User>>("users");
